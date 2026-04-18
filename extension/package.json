@@ -1,0 +1,179 @@
+{
+  "name": "locus-deploy",
+  "displayName": "Locus Deploy",
+  "description": "Deploy, manage, and monitor full-stack apps on Locus without leaving your editor.",
+  "version": "0.1.0",
+  "publisher": "locus",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "icon": "media/icons/locus.png",
+  "activationEvents": [
+    "onStartupFinished",
+    "workspaceContains:**/package.json",
+    "workspaceContains:**/requirements.txt",
+    "workspaceContains:**/Dockerfile"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "locus.deploy",
+        "title": "Locus: Deploy Workspace",
+        "icon": "$(rocket)"
+      },
+      {
+        "command": "locus.openSettings",
+        "title": "Locus: Configure API Key"
+      },
+      {
+        "command": "locus.configurePayApiKey",
+        "title": "Locus: Configure Pay API Key (for AI features)"
+      },
+      {
+        "command": "locus.viewLogs",
+        "title": "Locus: View Logs",
+        "icon": "$(output)"
+      },
+      {
+        "command": "locus.openUrl",
+        "title": "Locus: Open Live URL",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "locus.restart",
+        "title": "Locus: Restart Service",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "locus.rollback",
+        "title": "Locus: Rollback Deployment",
+        "icon": "$(history)"
+      },
+      {
+        "command": "locus.manageEnvVars",
+        "title": "Locus: Manage Environment Variables",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "locus.refreshServices",
+        "title": "Locus: Refresh Services",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "locus.deployNL",
+        "title": "Locus: Deploy with AI",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "locus.provisionTenant",
+        "title": "Locus: Provision Customer Environment"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "locus-sidebar",
+          "title": "Locus",
+          "icon": "media/icons/locus.svg"
+        }
+      ]
+    },
+    "views": {
+      "locus-sidebar": [
+        {
+          "id": "locus.serviceExplorer",
+          "name": "Services"
+        },
+        {
+          "id": "locus.deploymentHistory",
+          "name": "Deployments"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "locus.refreshServices",
+          "when": "view == locus.serviceExplorer",
+          "group": "navigation"
+        },
+        {
+          "command": "locus.deploy",
+          "when": "view == locus.serviceExplorer",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "locus.deploy",
+          "when": "viewItem == service",
+          "group": "1_actions@1"
+        },
+        {
+          "command": "locus.restart",
+          "when": "viewItem == service",
+          "group": "1_actions@2"
+        },
+        {
+          "command": "locus.rollback",
+          "when": "viewItem == service || viewItem == deployment",
+          "group": "1_actions@3"
+        },
+        {
+          "command": "locus.viewLogs",
+          "when": "viewItem == service || viewItem == deployment",
+          "group": "1_actions@4"
+        },
+        {
+          "command": "locus.manageEnvVars",
+          "when": "viewItem == service",
+          "group": "1_actions@5"
+        },
+        {
+          "command": "locus.openUrl",
+          "when": "viewItem == service",
+          "group": "1_actions@6"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Locus Deploy",
+      "properties": {
+        "locus.githubRepo": {
+          "type": "string",
+          "description": "GitHub repo in format owner/repo",
+          "scope": "workspace"
+        },
+        "locus.defaultRegion": {
+          "type": "string",
+          "default": "us-east-1",
+          "enum": [
+            "us-east-1",
+            "sa-east-1"
+          ],
+          "enumDescriptions": [
+            "N. Virginia (default)",
+            "São Paulo"
+          ],
+          "description": "Default deployment region"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "node esbuild.js --production",
+    "compile": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.20.0",
+    "typescript": "^5.3.0"
+  }
+}
