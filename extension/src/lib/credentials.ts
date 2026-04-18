@@ -48,40 +48,45 @@ async function readCliCredentials(): Promise<string | undefined> {
   }
 }
 
-// ─── Locus Pay API key (separate product from Build) ─────────────────────────
+// ─── Gemini API key (for AI failure diagnosis + auto-fix) ────────────────────
 
-const PAY_KEY_SECRET = 'locus.payApiKey';
+const GEMINI_KEY_SECRET = 'locus.geminiApiKey';
 
-/** Check SecretStorage only — we never co-mingle Build and Pay keys. */
-export async function findStoredPayKey(
+/** Check SecretStorage only. */
+export async function findStoredAiKey(
   secrets: vscode.SecretStorage
 ): Promise<string | undefined> {
-  return secrets.get(PAY_KEY_SECRET);
+  return secrets.get(GEMINI_KEY_SECRET);
 }
 
 /**
- * Prompt user for a Pay key and save it. Used lazily — only when an AI
- * feature is invoked for the first time. Returns undefined on cancel.
+ * Prompt user for a Gemini API key and save it. Used lazily — only when an
+ * AI feature is invoked for the first time. Get one free at
+ * https://aistudio.google.com/apikey. Returns undefined on cancel.
  */
-export async function promptForPayKey(
+export async function promptForAiKey(
   secrets: vscode.SecretStorage,
   reason?: string
 ): Promise<string | undefined> {
   const prompt = reason
-    ? `${reason} — enter your Locus Pay API key`
-    : 'Enter your Locus Pay API key';
+    ? `${reason} — paste a Gemini API key (free at aistudio.google.com/apikey)`
+    : 'Paste a Gemini API key (free at aistudio.google.com/apikey)';
   const key = await vscode.window.showInputBox({
     prompt,
     password: true,
-    placeHolder: 'claw_...',
+    placeHolder: 'AIza...',
     ignoreFocusOut: true,
-    validateInput: (v) => (v && !v.startsWith('claw_') ? 'Key must start with claw_' : null),
+    validateInput: (v) => {
+      if (!v) { return 'Required'; }
+      if (v.length < 20) { return 'Key looks too short'; }
+      return null;
+    },
   });
   if (!key) { return undefined; }
-  await secrets.store(PAY_KEY_SECRET, key);
+  await secrets.store(GEMINI_KEY_SECRET, key);
   return key;
 }
 
-export async function clearPayKey(secrets: vscode.SecretStorage): Promise<void> {
-  await secrets.delete(PAY_KEY_SECRET);
+export async function clearAiKey(secrets: vscode.SecretStorage): Promise<void> {
+  await secrets.delete(GEMINI_KEY_SECRET);
 }

@@ -1,7 +1,10 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { complete, extractJson, AnthropicError } from './anthropic';
+import { complete, extractJson, GeminiError } from './gemini';
 import { ProjectType, PROJECT_TYPE_LABELS } from './detector';
+
+// Re-export so callers catch a single error type without importing gemini directly
+export { GeminiError as AiError };
 
 /** What we hand Claude. Kept small — logs are the bulk of tokens. */
 export interface DiagnosisInput {
@@ -119,24 +122,25 @@ async function collectProjectFiles(workspaceRoot: vscode.Uri): Promise<AttachedF
 }
 
 export async function diagnoseFailure(
-  payApiKey: string,
+  apiKey: string,
   input: DiagnosisInput
 ): Promise<AiDiagnosis> {
   const files = await collectProjectFiles(input.workspaceRoot);
   const userMessage = buildUserMessage(input, files);
 
-  const response = await complete(payApiKey, {
+  const response = await complete(apiKey, {
     system: SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: userMessage }],
+    userMessage,
     maxTokens: 2000,
+    jsonMode: true,
   });
 
   let parsed: AiDiagnosis;
   try {
     parsed = extractJson<AiDiagnosis>(response);
   } catch (err) {
-    throw new AnthropicError(
-      `Claude returned malformed JSON: ${(err as Error).message}`,
+    throw new GeminiError(
+      `Gemini returned malformed JSON: ${(err as Error).message}`,
       500,
       { raw: response.slice(0, 500) }
     );
@@ -144,7 +148,7 @@ export async function diagnoseFailure(
 
   // Basic shape validation — enough to fail fast on junk responses
   if (typeof parsed.summary !== 'string' || typeof parsed.rootCause !== 'string') {
-    throw new AnthropicError('Diagnosis JSON missing required fields', 500, parsed);
+    throw new GeminiError('Diagnosis JSON missing required fields', 500, parsed);
   }
   return parsed;
 }

@@ -30,8 +30,8 @@
         "title": "Locus: Configure API Key"
       },
       {
-        "command": "locus.configurePayApiKey",
-        "title": "Locus: Configure Pay API Key (for AI features)"
+        "command": "locus.configureAiApiKey",
+        "title": "Locus: Configure Gemini API Key (for AI features)"
       },
       {
         "command": "locus.viewLogs",

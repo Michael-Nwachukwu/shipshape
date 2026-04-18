@@ -9,9 +9,8 @@ import {
   formatLogLine,
 } from '../lib/locus';
 import { detectProjectType, PROJECT_TYPE_LABELS, ProjectType } from '../lib/detector';
-import { findStoredApiKey, findStoredPayKey, promptForPayKey } from '../lib/credentials';
-import { diagnoseFailure, AiDiagnosis, ProposedFix } from '../lib/aiDiagnosis';
-import { AnthropicError } from '../lib/anthropic';
+import { findStoredApiKey, findStoredAiKey } from '../lib/credentials';
+import { diagnoseFailure, AiDiagnosis, ProposedFix, AiError } from '../lib/aiDiagnosis';
 import * as path from 'path';
 import { detectGitHubRemote, isGitRepo } from '../lib/gitRemote';
 import {
@@ -682,14 +681,14 @@ async function handleFailure(args: HandleFailureArgs): Promise<void> {
   const { phase, renderedLines } = await fetchFullLogs(client, state.deploymentId, channel);
   statusBar.setState('failed');
 
-  const payKey = await findStoredPayKey(context.secrets);
-  if (payKey) {
+  const aiKey = await findStoredAiKey(context.secrets);
+  if (aiKey) {
     try {
       channel.appendLine('');
-      channel.appendLine('🤖 Running AI diagnosis...');
+      channel.appendLine('🤖 Running AI diagnosis (Gemini 2.5 Flash)...');
       const diagnosis = await vscode.window.withProgress(
         { location: vscode.ProgressLocation.Notification, title: 'Locus: AI diagnosing failure...' },
-        () => diagnoseFailure(payKey, {
+        () => diagnoseFailure(aiKey, {
           phase,
           logs: renderedLines,
           projectType,
@@ -700,15 +699,15 @@ async function handleFailure(args: HandleFailureArgs): Promise<void> {
       await presentAiDiagnosis(diagnosis, args);
       return;
     } catch (err) {
-      const message = err instanceof AnthropicError
+      const message = err instanceof AiError
         ? `AI diagnosis failed (HTTP ${err.statusCode}): ${err.message}`
         : `AI diagnosis failed: ${(err as Error).message}`;
       channel.appendLine(`⚠ ${message}`);
       channel.appendLine('   Falling back to pattern-based diagnosis.');
     }
   } else {
-    // First time failing without a Pay key — offer the upgrade path
-    offerPayKeySetup(context);
+    // First time failing without an AI key — offer the upgrade path
+    offerAiKeySetup();
   }
 
   // Regex fallback
@@ -716,13 +715,16 @@ async function handleFailure(args: HandleFailureArgs): Promise<void> {
   await presentRegexDiagnosis(regex, channel);
 }
 
-function offerPayKeySetup(context: vscode.ExtensionContext): void {
+function offerAiKeySetup(): void {
   vscode.window.showInformationMessage(
-    'Tip: Configure a Locus Pay key to get AI-powered failure diagnosis and auto-fix.',
-    'Configure'
+    'Tip: Add a free Gemini API key to get AI-powered failure diagnosis and auto-fix.',
+    'Configure',
+    'Get a free key'
   ).then(action => {
     if (action === 'Configure') {
-      vscode.commands.executeCommand('locus.configurePayApiKey');
+      vscode.commands.executeCommand('locus.configureAiApiKey');
+    } else if (action === 'Get a free key') {
+      vscode.env.openExternal(vscode.Uri.parse('https://aistudio.google.com/apikey'));
     }
   });
 }

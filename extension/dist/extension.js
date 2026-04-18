@@ -65,27 +65,35 @@ async function readCliCredentials() {
     return void 0;
   }
 }
-var PAY_KEY_SECRET = "locus.payApiKey";
-async function findStoredPayKey(secrets) {
-  return secrets.get(PAY_KEY_SECRET);
+var GEMINI_KEY_SECRET = "locus.geminiApiKey";
+async function findStoredAiKey(secrets) {
+  return secrets.get(GEMINI_KEY_SECRET);
 }
-async function promptForPayKey(secrets, reason) {
-  const prompt = reason ? `${reason} \u2014 enter your Locus Pay API key` : "Enter your Locus Pay API key";
+async function promptForAiKey(secrets, reason) {
+  const prompt = reason ? `${reason} \u2014 paste a Gemini API key (free at aistudio.google.com/apikey)` : "Paste a Gemini API key (free at aistudio.google.com/apikey)";
   const key = await vscode.window.showInputBox({
     prompt,
     password: true,
-    placeHolder: "claw_...",
+    placeHolder: "AIza...",
     ignoreFocusOut: true,
-    validateInput: (v) => v && !v.startsWith("claw_") ? "Key must start with claw_" : null
+    validateInput: (v) => {
+      if (!v) {
+        return "Required";
+      }
+      if (v.length < 20) {
+        return "Key looks too short";
+      }
+      return null;
+    }
   });
   if (!key) {
     return void 0;
   }
-  await secrets.store(PAY_KEY_SECRET, key);
+  await secrets.store(GEMINI_KEY_SECRET, key);
   return key;
 }
-async function clearPayKey(secrets) {
-  await secrets.delete(PAY_KEY_SECRET);
+async function clearAiKey(secrets) {
+  await secrets.delete(GEMINI_KEY_SECRET);
 }
 
 // src/lib/locus.ts
@@ -561,49 +569,65 @@ async function readJsonFile(root, name) {
 var vscode4 = __toESM(require("vscode"));
 var path3 = __toESM(require("path"));
 
-// src/lib/anthropic.ts
-var WRAPPED_ENDPOINT = "https://api.paywithlocus.com/api/wrapped/anthropic/messages";
-var DEFAULT_MODEL = "claude-sonnet-4-20250514";
-var AnthropicError = class extends Error {
+// src/lib/gemini.ts
+var DEFAULT_MODEL = "gemini-2.5-flash";
+var ENDPOINT_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+var GeminiError = class extends Error {
   constructor(message, statusCode, body) {
     super(message);
     this.statusCode = statusCode;
     this.body = body;
-    this.name = "AnthropicError";
+    this.name = "GeminiError";
   }
 };
-async function complete(payApiKey, req) {
-  const response = await fetch(WRAPPED_ENDPOINT, {
+async function complete(apiKey, req) {
+  const model = req.model ?? DEFAULT_MODEL;
+  const url = `${ENDPOINT_BASE}/${encodeURIComponent(model)}:generateContent`;
+  const body = {
+    systemInstruction: { parts: [{ text: req.system }] },
+    contents: [{ role: "user", parts: [{ text: req.userMessage }] }],
+    generationConfig: {
+      temperature: 0.2,
+      maxOutputTokens: req.maxTokens ?? 2e3,
+      ...req.jsonMode ? { responseMimeType: "application/json" } : {}
+    }
+  };
+  const response = await fetch(url, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${payApiKey}`,
+      "x-goog-api-key": apiKey,
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({
-      model: req.model ?? DEFAULT_MODEL,
-      max_tokens: req.maxTokens ?? 2e3,
-      system: req.system,
-      messages: req.messages
-    })
+    body: JSON.stringify(body)
   });
   if (!response.ok) {
-    let body;
+    let errBody;
     try {
-      body = await response.json();
+      errBody = await response.json();
     } catch {
     }
-    throw new AnthropicError(
-      `Locus Pay wrapped Anthropic returned ${response.status}`,
+    throw new GeminiError(
+      `Gemini API returned ${response.status}`,
       response.status,
-      body
+      errBody
     );
   }
   const data = await response.json();
-  const textBlock = data.content.find((c) => c.type === "text" && c.text);
-  if (!textBlock?.text) {
-    throw new AnthropicError("Empty response from Claude", 500, data);
+  if (data.error) {
+    throw new GeminiError(data.error.message, data.error.code || 500, data.error);
   }
-  return textBlock.text;
+  if (data.promptFeedback?.blockReason) {
+    throw new GeminiError(
+      `Gemini blocked the prompt: ${data.promptFeedback.blockReason}`,
+      400,
+      data.promptFeedback
+    );
+  }
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) {
+    throw new GeminiError("Empty response from Gemini", 500, data);
+  }
+  return text;
 }
 function extractJson(text) {
   let s = text.trim();
@@ -693,26 +717,27 @@ async function collectProjectFiles(workspaceRoot) {
   }
   return files;
 }
-async function diagnoseFailure(payApiKey, input) {
+async function diagnoseFailure(apiKey, input) {
   const files = await collectProjectFiles(input.workspaceRoot);
   const userMessage = buildUserMessage(input, files);
-  const response = await complete(payApiKey, {
+  const response = await complete(apiKey, {
     system: SYSTEM_PROMPT,
-    messages: [{ role: "user", content: userMessage }],
-    maxTokens: 2e3
+    userMessage,
+    maxTokens: 2e3,
+    jsonMode: true
   });
   let parsed;
   try {
     parsed = extractJson(response);
   } catch (err) {
-    throw new AnthropicError(
-      `Claude returned malformed JSON: ${err.message}`,
+    throw new GeminiError(
+      `Gemini returned malformed JSON: ${err.message}`,
       500,
       { raw: response.slice(0, 500) }
     );
   }
   if (typeof parsed.summary !== "string" || typeof parsed.rootCause !== "string") {
-    throw new AnthropicError("Diagnosis JSON missing required fields", 500, parsed);
+    throw new GeminiError("Diagnosis JSON missing required fields", 500, parsed);
   }
   return parsed;
 }
@@ -1438,14 +1463,14 @@ async function handleFailure(args) {
   const { context, client, channel, state, projectType, workspaceRoot } = args;
   const { phase, renderedLines } = await fetchFullLogs(client, state.deploymentId, channel);
   setState("failed");
-  const payKey = await findStoredPayKey(context.secrets);
-  if (payKey) {
+  const aiKey = await findStoredAiKey(context.secrets);
+  if (aiKey) {
     try {
       channel.appendLine("");
-      channel.appendLine("\u{1F916} Running AI diagnosis...");
+      channel.appendLine("\u{1F916} Running AI diagnosis (Gemini 2.5 Flash)...");
       const diagnosis = await vscode10.window.withProgress(
         { location: vscode10.ProgressLocation.Notification, title: "Locus: AI diagnosing failure..." },
-        () => diagnoseFailure(payKey, {
+        () => diagnoseFailure(aiKey, {
           phase,
           logs: renderedLines,
           projectType,
@@ -1456,23 +1481,26 @@ async function handleFailure(args) {
       await presentAiDiagnosis(diagnosis, args);
       return;
     } catch (err) {
-      const message = err instanceof AnthropicError ? `AI diagnosis failed (HTTP ${err.statusCode}): ${err.message}` : `AI diagnosis failed: ${err.message}`;
+      const message = err instanceof GeminiError ? `AI diagnosis failed (HTTP ${err.statusCode}): ${err.message}` : `AI diagnosis failed: ${err.message}`;
       channel.appendLine(`\u26A0 ${message}`);
       channel.appendLine("   Falling back to pattern-based diagnosis.");
     }
   } else {
-    offerPayKeySetup(context);
+    offerAiKeySetup();
   }
   const regex = classifyFailure(renderedLines, phase);
   await presentRegexDiagnosis(regex, channel);
 }
-function offerPayKeySetup(context) {
+function offerAiKeySetup() {
   vscode10.window.showInformationMessage(
-    "Tip: Configure a Locus Pay key to get AI-powered failure diagnosis and auto-fix.",
-    "Configure"
+    "Tip: Add a free Gemini API key to get AI-powered failure diagnosis and auto-fix.",
+    "Configure",
+    "Get a free key"
   ).then((action) => {
     if (action === "Configure") {
-      vscode10.commands.executeCommand("locus.configurePayApiKey");
+      vscode10.commands.executeCommand("locus.configureAiApiKey");
+    } else if (action === "Get a free key") {
+      vscode10.env.openExternal(vscode10.Uri.parse("https://aistudio.google.com/apikey"));
     }
   });
 }
@@ -1848,27 +1876,27 @@ function activate(context) {
     })
   );
   context.subscriptions.push(
-    vscode14.commands.registerCommand("locus.configurePayApiKey", async () => {
-      const existing = await findStoredPayKey(context.secrets);
+    vscode14.commands.registerCommand("locus.configureAiApiKey", async () => {
+      const existing = await findStoredAiKey(context.secrets);
       if (existing) {
         const action = await vscode14.window.showInformationMessage(
-          "A Locus Pay API key is already saved. Replace it?",
+          "A Gemini API key is already saved. Replace it?",
           "Replace",
           "Clear",
           "Cancel"
         );
         if (action === "Clear") {
-          await clearPayKey(context.secrets);
-          vscode14.window.showInformationMessage("Locus Pay API key cleared.");
+          await clearAiKey(context.secrets);
+          vscode14.window.showInformationMessage("Gemini API key cleared.");
           return;
         }
         if (action !== "Replace") {
           return;
         }
       }
-      const key = await promptForPayKey(context.secrets);
+      const key = await promptForAiKey(context.secrets);
       if (key) {
-        vscode14.window.showInformationMessage("Locus Pay API key saved.");
+        vscode14.window.showInformationMessage("Gemini API key saved.");
       }
     })
   );

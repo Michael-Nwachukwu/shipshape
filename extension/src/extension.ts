@@ -5,7 +5,7 @@ import { registerDeployCommand } from './commands/deploy';
 import { registerRollbackCommand } from './commands/rollback';
 import { registerOpenUrlCommand } from './commands/openUrl';
 import { ServiceTreeProvider } from './providers/ServiceTreeProvider';
-import { promptForPayKey, clearPayKey, findStoredPayKey } from './lib/credentials';
+import { promptForAiKey, clearAiKey, findStoredAiKey } from './lib/credentials';
 
 export function activate(context: vscode.ExtensionContext): void {
   const client = new LocusClient(context.secrets);
@@ -63,28 +63,28 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
 
-  // ── AI / Locus Pay key management ─────────────────────────────────────────
+  // ── AI key management (Gemini, for failure diagnosis + auto-fix) ──────────
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('locus.configurePayApiKey', async () => {
-      const existing = await findStoredPayKey(context.secrets);
+    vscode.commands.registerCommand('locus.configureAiApiKey', async () => {
+      const existing = await findStoredAiKey(context.secrets);
       if (existing) {
         const action = await vscode.window.showInformationMessage(
-          'A Locus Pay API key is already saved. Replace it?',
+          'A Gemini API key is already saved. Replace it?',
           'Replace',
           'Clear',
           'Cancel'
         );
         if (action === 'Clear') {
-          await clearPayKey(context.secrets);
-          vscode.window.showInformationMessage('Locus Pay API key cleared.');
+          await clearAiKey(context.secrets);
+          vscode.window.showInformationMessage('Gemini API key cleared.');
           return;
         }
         if (action !== 'Replace') { return; }
       }
-      const key = await promptForPayKey(context.secrets);
+      const key = await promptForAiKey(context.secrets);
       if (key) {
-        vscode.window.showInformationMessage('Locus Pay API key saved.');
+        vscode.window.showInformationMessage('Gemini API key saved.');
       }
     })
   );
