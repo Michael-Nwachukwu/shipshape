@@ -562,7 +562,7 @@ var vscode4 = __toESM(require("vscode"));
 var path3 = __toESM(require("path"));
 
 // src/lib/anthropic.ts
-var WRAPPED_ENDPOINT = "https://api.paywithlocus.com/api/wrapped/anthropic/v1/messages";
+var WRAPPED_ENDPOINT = "https://api.paywithlocus.com/api/wrapped/anthropic/messages";
 var DEFAULT_MODEL = "claude-sonnet-4-20250514";
 var AnthropicError = class extends Error {
   constructor(message, statusCode, body) {

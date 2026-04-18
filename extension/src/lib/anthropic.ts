@@ -7,7 +7,7 @@
  * in. This module never touches SecretStorage or logs the key.
  */
 
-const WRAPPED_ENDPOINT = 'https://api.paywithlocus.com/api/wrapped/anthropic/v1/messages';
+const WRAPPED_ENDPOINT = 'https://api.paywithlocus.com/api/wrapped/anthropic/messages';
 
 // Use a Claude 4 family model — reliable for structured JSON output
 export const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
