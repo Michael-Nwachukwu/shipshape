@@ -3,7 +3,9 @@
 src/**
 .gitignore
 esbuild.js
-tsconfig.json
+**/tsconfig.json
+**/.eslintrc.json
+**/*.map
+**/*.ts
 node_modules/**
-out/**
-*.map
+*.vsix

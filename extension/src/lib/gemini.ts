@@ -17,6 +17,12 @@ export interface GeminiRequest {
   maxTokens?: number;
   /** When true, ask Gemini to return application/json directly. */
   jsonMode?: boolean;
+  /**
+   * Gemini responseSchema (OpenAPI 3.0 subset, UPPERCASE types).
+   * When provided, the model is constrained to emit JSON matching this schema.
+   * Far more reliable than jsonMode alone.
+   */
+  responseSchema?: Record<string, unknown>;
 }
 
 interface GeminiResponse {
@@ -39,6 +45,11 @@ export class GeminiError extends Error {
   }
 }
 
+// Retryable HTTP codes: 429 (rate limit), 500/502/503/504 (transient server errors)
+const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
+const MAX_RETRIES = 2;
+const BASE_BACKOFF_MS = 1500;
+
 export async function complete(
   apiKey: string,
   req: GeminiRequest
@@ -51,19 +62,40 @@ export async function complete(
     contents: [{ role: 'user', parts: [{ text: req.userMessage }] }],
     generationConfig: {
       temperature: 0.2,
-      maxOutputTokens: req.maxTokens ?? 2000,
+      maxOutputTokens: req.maxTokens ?? 4000,
       ...(req.jsonMode ? { responseMimeType: 'application/json' } : {}),
+      ...(req.responseSchema ? { responseSchema: req.responseSchema } : {}),
     },
   };
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'x-goog-api-key': apiKey,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
+  let response: Response | undefined;
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'x-goog-api-key': apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+      if (response.ok) { break; }
+      if (!RETRYABLE_STATUSES.has(response.status) || attempt === MAX_RETRIES) { break; }
+    } catch (err) {
+      lastErr = err;
+      if (attempt === MAX_RETRIES) { throw err; }
+    }
+    // Exponential backoff: 1.5s, 3s
+    await new Promise((r) => setTimeout(r, BASE_BACKOFF_MS * 2 ** attempt));
+  }
+
+  if (!response) {
+    throw new GeminiError(
+      `Gemini network error: ${(lastErr as Error)?.message ?? 'unknown'}`,
+      0
+    );
+  }
 
   if (!response.ok) {
     let errBody: unknown;
@@ -88,9 +120,17 @@ export async function complete(
     );
   }
 
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  const candidate = data.candidates?.[0];
+  const text = candidate?.content?.parts?.[0]?.text;
   if (!text) {
     throw new GeminiError('Empty response from Gemini', 500, data);
+  }
+  if (candidate?.finishReason === 'MAX_TOKENS') {
+    throw new GeminiError(
+      'Gemini response was truncated (hit max output tokens). Increase maxTokens or simplify the request.',
+      500,
+      { finishReason: candidate.finishReason, rawLength: text.length }
+    );
   }
   return text;
 }

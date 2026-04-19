@@ -121,6 +121,31 @@ async function collectProjectFiles(workspaceRoot: vscode.Uri): Promise<AttachedF
   return files;
 }
 
+// Gemini responseSchema — OpenAPI 3.0 subset, UPPERCASE type names.
+// The `fix` object is wrapped in nullable so Gemini can legitimately emit null.
+const DIAGNOSIS_SCHEMA: Record<string, unknown> = {
+  type: 'OBJECT',
+  properties: {
+    summary: { type: 'STRING' },
+    rootCause: { type: 'STRING' },
+    owner: { type: 'STRING', enum: ['user', 'platform', 'config', 'unknown'] },
+    confidence: { type: 'STRING', enum: ['high', 'medium', 'low'] },
+    fix: {
+      type: 'OBJECT',
+      nullable: true,
+      properties: {
+        description: { type: 'STRING' },
+        file: { type: 'STRING' },
+        action: { type: 'STRING', enum: ['replace'] },
+        content: { type: 'STRING' },
+        commitMessage: { type: 'STRING' },
+      },
+      required: ['description', 'file', 'action', 'content', 'commitMessage'],
+    },
+  },
+  required: ['summary', 'rootCause', 'owner', 'confidence', 'fix'],
+};
+
 export async function diagnoseFailure(
   apiKey: string,
   input: DiagnosisInput
@@ -131,8 +156,9 @@ export async function diagnoseFailure(
   const response = await complete(apiKey, {
     system: SYSTEM_PROMPT,
     userMessage,
-    maxTokens: 2000,
+    maxTokens: 8000,
     jsonMode: true,
+    responseSchema: DIAGNOSIS_SCHEMA,
   });
 
   let parsed: AiDiagnosis;
@@ -140,9 +166,9 @@ export async function diagnoseFailure(
     parsed = extractJson<AiDiagnosis>(response);
   } catch (err) {
     throw new GeminiError(
-      `Gemini returned malformed JSON: ${(err as Error).message}`,
+      `Gemini returned malformed JSON: ${(err as Error).message}. Raw response (first 300 chars): ${response.slice(0, 300)}`,
       500,
-      { raw: response.slice(0, 500) }
+      { raw: response.slice(0, 1000) }
     );
   }
 

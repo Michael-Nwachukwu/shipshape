@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { LocusClient, LocusError } from '../lib/locus';
 import { ServiceNode } from '../providers/ServiceTreeProvider';
+import { showError } from '../lib/errorFormat';
 
 export function registerRestartCommand(
   context: vscode.ExtensionContext,
@@ -49,8 +50,7 @@ export function registerRestartCommand(
         );
         await vscode.commands.executeCommand('locus.refreshServices');
       } catch (err) {
-        const msg = err instanceof LocusError ? err.message : (err as Error).message;
-        vscode.window.showErrorMessage(`Restart failed: ${msg}`);
+        await showError(err, 'Restart failed');
       }
     })
   );

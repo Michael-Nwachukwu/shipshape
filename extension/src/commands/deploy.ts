@@ -8,6 +8,7 @@ import {
   FromRepoResult,
   formatLogLine,
 } from '../lib/locus';
+import { showError } from '../lib/errorFormat';
 import { detectProjectType, PROJECT_TYPE_LABELS, ProjectType } from '../lib/detector';
 import { findStoredApiKey, findStoredAiKey } from '../lib/credentials';
 import { diagnoseFailure, AiDiagnosis, ProposedFix, AiError } from '../lib/aiDiagnosis';
@@ -211,6 +212,12 @@ async function runDeploy(
       // Fall through to from-repo to create the service
       result = await callFromRepo(client, repoSlug);
     } else {
+      // Sync .locusbuild → service config BEFORE triggering the deployment.
+      // This fixes a common footgun: user edits .locusbuild (e.g. healthCheck),
+      // but subsequent deploys only redeploy code and keep the stale service
+      // config, so the change silently never takes effect.
+      await syncServiceFromLocusBuild(client, workspaceRoot, services);
+
       const deployment = await client.triggerDeployment(service.id);
       result = {
         project: existing,
@@ -546,6 +553,44 @@ async function callFromRepo(client: LocusClient, repoSlug: string): Promise<From
   );
 }
 
+/**
+ * Compare `.locusbuild` to the currently-deployed services. If a service's
+ * healthCheckPath differs from the file, PATCH it before the next deployment.
+ *
+ * Background: `POST /deployments` only redeploys code — it never re-reads
+ * `.locusbuild`. Without this sync, edits to healthCheck silently have no
+ * effect until the service is recreated.
+ */
+async function syncServiceFromLocusBuild(
+  client: LocusClient,
+  workspaceRoot: vscode.Uri,
+  services: import('../lib/locus').Service[]
+): Promise<void> {
+  const config = await readLocusBuild(workspaceRoot);
+  if (!config?.services) { return; }
+
+  for (const [name, svcConfig] of Object.entries(config.services)) {
+    const deployed = services.find((s) => s.name === name);
+    if (!deployed) { continue; }
+
+    const desired = svcConfig.healthCheck;
+    // We don't have healthCheckPath on the Service type — the API returns it
+    // under `runtime` or similar. Rather than trying to read-compare, we just
+    // PATCH unconditionally with the desired value. The API is idempotent.
+    if (!desired) { continue; }
+
+    try {
+      await client.updateService(deployed.id, { healthCheckPath: desired });
+      vscode.window.showInformationMessage(
+        `Synced healthCheck for "${name}": ${desired}`
+      );
+    } catch (err) {
+      // Non-fatal — log but proceed with the deploy
+      console.warn(`Failed to sync healthCheck for ${name}:`, err);
+    }
+  }
+}
+
 // ─── Polling ────────────────────────────────────────────────────────────────
 
 async function pollDeployment(
@@ -747,6 +792,14 @@ async function presentAiDiagnosis(
     channel.appendLine('');
     channel.appendLine(`   💡 Proposed fix: ${diagnosis.fix.description}`);
     channel.appendLine(`      File: ${diagnosis.fix.file}`);
+  } else {
+    channel.appendLine('');
+    channel.appendLine(
+      `   ℹ  No safe auto-fix available — this issue needs a manual change`
+    );
+    channel.appendLine(
+      `      (renames, multi-file changes, and low-confidence fixes are skipped for safety).`
+    );
   }
 
   const actions: string[] = [];
@@ -1036,32 +1089,8 @@ function classifyFailure(logs: string[], phase: string): Diagnosis {
 // ─── Error handling ─────────────────────────────────────────────────────────
 
 function handleDeployError(err: unknown): void {
-  if (err instanceof LocusError) {
-    if (err.statusCode === 402) {
-      vscode.window.showErrorMessage(
-        `Locus: Insufficient credits (balance $${err.creditBalance ?? '?'}, need $${err.requiredAmount ?? '?'}).`,
-        'Add Credits'
-      ).then(action => {
-        if (action === 'Add Credits') {
-          vscode.env.openExternal(vscode.Uri.parse('https://beta.buildwithlocus.com/billing'));
-        }
-      });
-      return;
-    }
-    if (err.statusCode === 401) {
-      vscode.window.showErrorMessage(
-        'Locus: Authentication failed. Run "Locus: Configure API Key" to re-enter your key.'
-      );
-      return;
-    }
-    vscode.window.showErrorMessage(`Locus: ${err.message}${err.details ? ` — ${err.details}` : ''}`);
-    return;
-  }
-  if (err instanceof Error) {
-    vscode.window.showErrorMessage(`Locus: ${err.message}`);
-    return;
-  }
-  vscode.window.showErrorMessage(`Locus: Unknown error — ${String(err)}`);
+  // Thin wrapper around the shared formatter — keeps existing call site simple
+  void showError(err, 'Deploy failed');
 }
 
 // ─── Utilities ──────────────────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
-import { LocusClient, LocusError } from '../lib/locus';
+import { LocusClient } from '../lib/locus';
 import { DeploymentNode, ServiceNode } from '../providers/ServiceTreeProvider';
+import { showError } from '../lib/errorFormat';
 
 export function registerRollbackCommand(
   context: vscode.ExtensionContext,
@@ -32,9 +33,7 @@ export function registerRollbackCommand(
             deploymentId = target.id;
             label = `Deploy #${target.version}`;
           } catch (err) {
-            vscode.window.showErrorMessage(
-              `Failed to find previous deployment: ${(err as Error).message}`
-            );
+            await showError(err, 'Failed to find previous deployment');
             return;
           }
         }
@@ -74,8 +73,7 @@ export function registerRollbackCommand(
           );
           await vscode.commands.executeCommand('locus.refreshServices');
         } catch (err) {
-          const msg = err instanceof LocusError ? err.message : (err as Error).message;
-          vscode.window.showErrorMessage(`Rollback failed: ${msg}`);
+          await showError(err, 'Rollback failed');
         }
       }
     )

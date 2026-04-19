@@ -4,13 +4,28 @@
   "description": "Deploy, manage, and monitor full-stack apps on Locus without leaving your editor.",
   "version": "0.1.0",
   "publisher": "locus",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/michael-nwachukwu/locus-deploy"
+  },
+  "keywords": [
+    "locus",
+    "deploy",
+    "paas",
+    "nextjs",
+    "cloud",
+    "hosting",
+    "github",
+    "ai"
+  ],
   "engines": {
     "vscode": "^1.85.0"
   },
   "categories": [
-    "Other"
+    "Other",
+    "AI"
   ],
-  "icon": "media/icons/locus.png",
   "activationEvents": [
     "onStartupFinished",
     "workspaceContains:**/package.json",

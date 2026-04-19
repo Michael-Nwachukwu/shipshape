@@ -6,7 +6,8 @@ import { registerRollbackCommand } from './commands/rollback';
 import { registerOpenUrlCommand } from './commands/openUrl';
 import { registerRestartCommand } from './commands/restart';
 import { registerViewLogsCommand } from './commands/viewLogs';
-import { ServiceTreeProvider } from './providers/ServiceTreeProvider';
+import { ServiceTreeProvider, ServiceNode } from './providers/ServiceTreeProvider';
+import { EnvVarProvider } from './providers/EnvVarProvider';
 import { promptForAiKey, clearAiKey, findStoredAiKey } from './lib/credentials';
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -49,10 +50,16 @@ export function activate(context: vscode.ExtensionContext): void {
   registerRestartCommand(context, client);
   registerViewLogsCommand(context, client);
 
+  const envVarProvider = new EnvVarProvider(client, context.extensionUri);
   context.subscriptions.push(
-    vscode.commands.registerCommand('locus.manageEnvVars', () => {
+    vscode.commands.registerCommand('locus.manageEnvVars', async (node?: ServiceNode) => {
+      if (node instanceof ServiceNode) {
+        envVarProvider.show(node.service.id, node.service.name);
+        return;
+      }
+      // No service passed — prompt user to pick one from the sidebar
       vscode.window.showInformationMessage(
-        'Environment variable manager — coming in Phase 4.'
+        'Right-click a service in the Services sidebar and choose "Manage Env Vars".'
       );
     })
   );
