@@ -47,6 +47,7 @@ export function formatError(err: unknown, context?: string): FormattedError {
         return {
           message: `${prefix}Locus API is having issues (HTTP ${err.statusCode}). Try again in a minute.`,
         };
+
       default:
         return {
           message: `${prefix}${err.message}${err.details ? ` — ${err.details}` : ''}`,
@@ -78,12 +79,12 @@ export function formatError(err: unknown, context?: string): FormattedError {
 export async function showError(err: unknown, context?: string): Promise<void> {
   const { message, actions } = formatError(err, context);
   const labels = (actions ?? []).map((a) => a.label);
-  const choice = await vscode.window.showErrorMessage(`Locus: ${message}`, ...labels);
+  const choice = await vscode.window.showErrorMessage(`ShipShape: ${message}`, ...labels);
   if (!choice) { return; }
   const action = (actions ?? []).find((a) => a.label === choice);
   if (action?.url) {
     vscode.env.openExternal(vscode.Uri.parse(action.url));
   } else if (action?.label === 'Re-enter API Key') {
-    vscode.commands.executeCommand('locus.openSettings');
+    vscode.commands.executeCommand('shipshape.openSettings');
   }
 }

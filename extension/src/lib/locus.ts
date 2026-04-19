@@ -199,7 +199,7 @@ export class LocusClient {
     const stored = await findStoredApiKey(this.secrets);
     if (!stored) {
       throw new LocusError(
-        'No API key configured. Run "Locus: Configure API Key" first.',
+        'No API key configured. Run "ShipShape: Configure Locus API Key" first.',
         401
       );
     }

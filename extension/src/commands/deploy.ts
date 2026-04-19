@@ -66,7 +66,7 @@ export function registerDeployCommand(
   const logProvider = new LogOutputProvider(client);
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('locus.deploy', async () => {
+    vscode.commands.registerCommand('shipshape.deploy', async () => {
       try {
         await runDeploy(context, client, logProvider);
       } catch (err) {
@@ -92,7 +92,7 @@ async function runDeploy(
 
   // ── Step 2: Verify token ───────────────────────────────────────────────────
   await vscode.window.withProgress(
-    { location: vscode.ProgressLocation.Notification, title: 'Locus: Verifying credentials...' },
+    { location: vscode.ProgressLocation.Notification, title: 'ShipShape: Verifying credentials...' },
     async () => {
       await client.verifyOrRefreshToken();
     }
@@ -113,7 +113,7 @@ async function runDeploy(
   }
   if (balance.warnings && balance.warnings.length > 0) {
     for (const w of balance.warnings) {
-      vscode.window.showWarningMessage(`Locus: ${w.message}`);
+      vscode.window.showWarningMessage(`ShipShape: ${w.message}`);
     }
   }
 
@@ -252,7 +252,7 @@ async function runDeploy(
     repoSlug,
   };
 
-  await context.globalState.update('locus.lastDeploy', state);
+  await context.globalState.update('shipshape.lastDeploy', state);
 
   // ── Step 9: Open output channel + start log streaming ──────────────────────
   const channel = logProvider.getOrCreateChannel(repoSlug);
@@ -286,10 +286,10 @@ async function runDeploy(
       await sleep(SERVICE_DISCOVERY_DELAY_MS);
       channel.appendLine(`🌐 Live at: ${service.url}`);
       statusBar.setState('healthy', service.url);
-      vscode.commands.executeCommand('locus.refreshServices');
+      vscode.commands.executeCommand('shipshape.refreshServices');
 
       const action = await vscode.window.showInformationMessage(
-        `Locus: ${service.name} is live at ${service.url}`,
+        `ShipShape: ${service.name} is live at ${service.url}`,
         'Open in Browser',
         'View Logs'
       );
@@ -344,7 +344,7 @@ async function ensureApiKey(
   if (!apiKey) {
     return undefined;
   }
-  await context.secrets.store('locus.buildApiKey', apiKey);
+  await context.secrets.store('shipshape.buildApiKey', apiKey);
   client.clearTokenCache();
   return apiKey;
 }
@@ -372,7 +372,7 @@ async function confirmProjectType(detected: ProjectType): Promise<ProjectType | 
   ];
 
   const pick = await vscode.window.showQuickPick(choices, {
-    title: 'Locus: Confirm project type',
+    title: 'ShipShape: Confirm project type',
     placeHolder: `Detected: ${detectedLabel}`,
     ignoreFocusOut: true,
   });
@@ -409,7 +409,7 @@ async function ensureDockerfileIfNeeded(
 
   const label = PROJECT_TYPE_LABELS[projectType];
   const choice = await vscode.window.showWarningMessage(
-    `Locus: ${label} projects need a Dockerfile to bind to port 8080. ` +
+    `ShipShape: ${label} projects need a Dockerfile to bind to port 8080. ` +
       `Nixpacks' default serves on port 80 and will fail health checks. ` +
       `Generate one now?`,
     { modal: true },
@@ -443,14 +443,14 @@ async function ensureDockerfileIfNeeded(
 
   if (commitChoice === `I'll commit manually`) {
     vscode.window.showInformationMessage(
-      'Commit the Dockerfile and push to your default branch, then run "Locus: Deploy Workspace" again.'
+      'Commit the Dockerfile and push to your default branch, then run "ShipShape: Deploy Workspace" again.'
     );
     return false;
   }
 
   // Commit & push via VS Code's Git extension
   const result = await vscode.window.withProgress(
-    { location: vscode.ProgressLocation.Notification, title: 'Locus: Committing Dockerfile...' },
+    { location: vscode.ProgressLocation.Notification, title: 'ShipShape: Committing Dockerfile...' },
     async () => commitAndPushFile(workspaceRoot, {
       filePath: dockerfileUri(workspaceRoot).fsPath,
       commitMessage: 'Add Dockerfile for Locus deploy (port 8080)',
@@ -464,7 +464,7 @@ async function ensureDockerfileIfNeeded(
       'Cancel'
     );
     if (action === 'Open terminal') {
-      const terminal = vscode.window.createTerminal('Locus');
+      const terminal = vscode.window.createTerminal('ShipShape');
       terminal.show();
       terminal.sendText('git add Dockerfile && git commit -m "Add Dockerfile for Locus deploy" && git push');
     }
@@ -476,7 +476,7 @@ async function ensureDockerfileIfNeeded(
 }
 
 async function ensureGitHubRepo(workspaceRoot: vscode.Uri): Promise<string | undefined> {
-  const config = vscode.workspace.getConfiguration('locus');
+  const config = vscode.workspace.getConfiguration('shipshape');
   const saved = config.get<string>('githubRepo');
 
   // 1. Already saved in workspace config
@@ -488,7 +488,7 @@ async function ensureGitHubRepo(workspaceRoot: vscode.Uri): Promise<string | und
   const detected = await detectGitHubRemote(workspaceRoot);
   if (detected) {
     const confirm = await vscode.window.showInformationMessage(
-      `Locus: Deploy from GitHub repo "${detected}"?`,
+      `ShipShape: Deploy from GitHub repo "${detected}"?`,
       { modal: false },
       'Yes',
       'Use a different repo'
@@ -544,9 +544,9 @@ async function ensureGitHubRepo(workspaceRoot: vscode.Uri): Promise<string | und
 
 async function callFromRepo(client: LocusClient, repoSlug: string): Promise<FromRepoResult> {
   return vscode.window.withProgress(
-    { location: vscode.ProgressLocation.Notification, title: `Locus: Creating project from ${repoSlug}...` },
+    { location: vscode.ProgressLocation.Notification, title: `ShipShape: Creating project from ${repoSlug}...` },
     async () => {
-      const region = vscode.workspace.getConfiguration('locus').get<string>('defaultRegion') ?? 'us-east-1';
+      const region = vscode.workspace.getConfiguration('shipshape').get<string>('defaultRegion') ?? 'us-east-1';
       const name = repoSlug.split('/')[1];
       return client.fromRepo(repoSlug, 'main', name, region);
     }
@@ -733,7 +733,7 @@ async function handleFailure(args: HandleFailureArgs): Promise<void> {
       channel.appendLine('');
       channel.appendLine('🤖 Running AI diagnosis (Gemini 2.5 Flash)...');
       const diagnosis = await vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Notification, title: 'Locus: AI diagnosing failure...' },
+        { location: vscode.ProgressLocation.Notification, title: 'ShipShape: AI diagnosing failure...' },
         () => diagnoseFailure(aiKey, {
           phase,
           logs: renderedLines,
@@ -768,7 +768,7 @@ function offerAiKeySetup(): void {
     'Get a free key'
   ).then(action => {
     if (action === 'Configure') {
-      vscode.commands.executeCommand('locus.configureAiApiKey');
+      vscode.commands.executeCommand('shipshape.configureAiApiKey');
     } else if (action === 'Get a free key') {
       vscode.env.openExternal(vscode.Uri.parse('https://aistudio.google.com/apikey'));
     }
@@ -830,7 +830,7 @@ async function presentAiDiagnosis(
   } else if (action === 'View logs') {
     channel.show();
   } else if (action === 'Retry') {
-    vscode.commands.executeCommand('locus.deploy');
+    vscode.commands.executeCommand('shipshape.deploy');
   }
 }
 
@@ -872,14 +872,14 @@ async function applyFixAndRedeploy(
     await vscode.workspace.fs.writeFile(fileUri, new TextEncoder().encode(fix.content));
   } catch (err) {
     channel.appendLine(`❌ Could not write file: ${(err as Error).message}`);
-    vscode.window.showErrorMessage(`Locus: Could not write ${fix.file} — ${(err as Error).message}`);
+    vscode.window.showErrorMessage(`ShipShape: Could not write ${fix.file} — ${(err as Error).message}`);
     return;
   }
 
   // Commit + push
   channel.appendLine(`   Committing: ${fix.commitMessage}`);
   const result = await vscode.window.withProgress(
-    { location: vscode.ProgressLocation.Notification, title: 'Locus: Committing + pushing fix...' },
+    { location: vscode.ProgressLocation.Notification, title: 'ShipShape: Committing + pushing fix...' },
     () => commitAndPushFile(workspaceRoot, {
       filePath: fileUri.fsPath,
       commitMessage: fix.commitMessage,
@@ -887,7 +887,7 @@ async function applyFixAndRedeploy(
   );
   if (!result.ok) {
     channel.appendLine(`❌ Could not commit + push: ${result.reason}`);
-    vscode.window.showErrorMessage(`Locus: Fix written but not pushed — ${result.reason}`);
+    vscode.window.showErrorMessage(`ShipShape: Fix written but not pushed — ${result.reason}`);
     return;
   }
   channel.appendLine('✅ Pushed to GitHub. Triggering new deployment...');
@@ -898,12 +898,12 @@ async function applyFixAndRedeploy(
     newDeployment = await client.triggerDeployment(state.serviceId);
   } catch (err) {
     channel.appendLine(`❌ Could not trigger deployment: ${(err as Error).message}`);
-    vscode.window.showErrorMessage(`Locus: Could not trigger redeploy — ${(err as Error).message}`);
+    vscode.window.showErrorMessage(`ShipShape: Could not trigger redeploy — ${(err as Error).message}`);
     return;
   }
 
   const newState: DeployState = { ...state, deploymentId: newDeployment.id };
-  await context.globalState.update('locus.lastDeploy', newState);
+  await context.globalState.update('shipshape.lastDeploy', newState);
 
   channel.appendLine(`🚀 New deployment: ${newDeployment.id}`);
   channel.appendLine('');
@@ -926,9 +926,9 @@ async function applyFixAndRedeploy(
       await sleep(SERVICE_DISCOVERY_DELAY_MS);
       channel.appendLine(`🌐 Live at: ${state.serviceUrl}`);
       statusBar.setState('healthy', state.serviceUrl);
-      vscode.commands.executeCommand('locus.refreshServices');
+      vscode.commands.executeCommand('shipshape.refreshServices');
       const a = await vscode.window.showInformationMessage(
-        `Locus: Fix applied — ${state.serviceName} is live at ${state.serviceUrl}`,
+        `ShipShape: Fix applied — ${state.serviceName} is live at ${state.serviceUrl}`,
         'Open in Browser'
       );
       if (a === 'Open in Browser') {
@@ -969,7 +969,7 @@ async function presentRegexDiagnosis(
   if (action === 'View Logs') {
     channel.show();
   } else if (action === 'Retry') {
-    vscode.commands.executeCommand('locus.deploy');
+    vscode.commands.executeCommand('shipshape.deploy');
   }
 }
 

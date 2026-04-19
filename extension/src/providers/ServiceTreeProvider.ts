@@ -52,7 +52,7 @@ export class ServiceNode extends vscode.TreeItem {
       .join('\n');
     // Single-click default: stream runtime logs. Right-click still shows the full menu.
     this.command = {
-      command: 'locus.viewLogs',
+      command: 'shipshape.viewLogs',
       title: 'View Logs',
       arguments: [this],
     };
@@ -82,7 +82,7 @@ export class DeploymentNode extends vscode.TreeItem {
       .filter((x) => x !== undefined)
       .join('\n');
     this.command = {
-      command: 'locus.viewLogs',
+      command: 'shipshape.viewLogs',
       title: 'View Logs',
       arguments: [this],
     };
@@ -221,7 +221,7 @@ export class ServiceTreeProvider implements vscode.TreeDataProvider<LocusTreeNod
     if (!cached) { this.cache.set('projects', projects); }
 
     if (projects.length === 0) {
-      return [new MessageNode('No projects yet — run "Locus: Deploy Workspace"', 'info')];
+      return [new MessageNode('No projects yet — run "ShipShape: Deploy Workspace"', 'info')];
     }
     return projects.map((p) => new ProjectNode(p));
   }

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <!-- Deploy arrow (mast top) -->
+  <path d="M 50 13 L 44 25 L 48.2 25 L 48.2 28 L 51.8 28 L 51.8 25 L 56 25 Z" fill="currentColor"/>
+  <!-- Mast -->
+  <rect x="48.5" y="28" width="3" height="40" rx="1" fill="currentColor"/>
+  <!-- Foresail (dimmer) -->
+  <path d="M 48.5 38 L 33 68 L 48.5 68 Z" fill="currentColor" opacity="0.45"/>
+  <!-- Main sail / deploy shape -->
+  <path d="M 51.5 32 L 72 68 L 51.5 68 Z" fill="currentColor" opacity="0.95"/>
+  <!-- Deck -->
+  <rect x="22" y="68" width="56" height="5" rx="1" fill="currentColor"/>
+  <!-- Hull -->
+  <path d="M 22 72 L 78 72 L 72 84 Q 50 88 28 84 Z" fill="currentColor" opacity="0.9"/>
+</svg>

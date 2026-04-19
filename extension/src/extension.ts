@@ -22,8 +22,8 @@ export function activate(context: vscode.ExtensionContext): void {
   registerDeployCommand(context, client);
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('locus.openSettings', async () => {
-      const existing = await context.secrets.get('locus.buildApiKey');
+    vscode.commands.registerCommand('shipshape.openSettings', async () => {
+      const existing = await context.secrets.get('shipshape.buildApiKey');
       const key = await vscode.window.showInputBox({
         prompt: 'Enter your Locus Build API key',
         password: true,
@@ -37,7 +37,7 @@ export function activate(context: vscode.ExtensionContext): void {
       if (!key || key.startsWith('(already')) {
         return;
       }
-      await context.secrets.store('locus.buildApiKey', key);
+      await context.secrets.store('shipshape.buildApiKey', key);
       client.clearTokenCache();
       vscode.window.showInformationMessage('Locus API key saved.');
     })
@@ -52,7 +52,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const envVarProvider = new EnvVarProvider(client, context.extensionUri);
   context.subscriptions.push(
-    vscode.commands.registerCommand('locus.manageEnvVars', async (node?: ServiceNode) => {
+    vscode.commands.registerCommand('shipshape.manageEnvVars', async (node?: ServiceNode) => {
       if (node instanceof ServiceNode) {
         envVarProvider.show(node.service.id, node.service.name);
         return;
@@ -67,7 +67,7 @@ export function activate(context: vscode.ExtensionContext): void {
   // ── AI key management (Gemini, for failure diagnosis + auto-fix) ──────────
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('locus.configureAiApiKey', async () => {
+    vscode.commands.registerCommand('shipshape.configureAiApiKey', async () => {
       const existing = await findStoredAiKey(context.secrets);
       if (existing) {
         const action = await vscode.window.showInformationMessage(
@@ -93,12 +93,12 @@ export function activate(context: vscode.ExtensionContext): void {
   // ── Tier 3 commands (stubs) ───────────────────────────────────────────────
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('locus.deployNL', () => {
+    vscode.commands.registerCommand('shipshape.deployNL', () => {
       vscode.window.showInformationMessage(
         'AI-powered deploy — coming in Phase 6 (Tier 3 stretch).'
       );
     }),
-    vscode.commands.registerCommand('locus.provisionTenant', () => {
+    vscode.commands.registerCommand('shipshape.provisionTenant', () => {
       vscode.window.showInformationMessage(
         'Multi-tenant provisioner — coming in Phase 6 (Tier 3 stretch).'
       );
@@ -109,9 +109,9 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const treeProvider = new ServiceTreeProvider(client);
   context.subscriptions.push(
-    vscode.window.registerTreeDataProvider('locus.serviceExplorer', treeProvider),
-    vscode.window.registerTreeDataProvider('locus.deploymentHistory', treeProvider),
-    vscode.commands.registerCommand('locus.refreshServices', () => treeProvider.refresh())
+    vscode.window.registerTreeDataProvider('shipshape.serviceExplorer', treeProvider),
+    vscode.window.registerTreeDataProvider('shipshape.deploymentHistory', treeProvider),
+    vscode.commands.registerCommand('shipshape.refreshServices', () => treeProvider.refresh())
   );
 }
 

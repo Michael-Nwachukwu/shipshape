@@ -14,7 +14,7 @@ export class LogOutputProvider {
     if (existing) {
       return existing;
     }
-    const channel = vscode.window.createOutputChannel(`Locus: ${name}`);
+    const channel = vscode.window.createOutputChannel(`ShipShape: ${name}`);
     this._channels.set(name, channel);
     return channel;
   }

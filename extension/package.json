@@ -1,16 +1,16 @@
 {
-  "name": "locus-deploy",
-  "displayName": "Locus Deploy",
-  "description": "Deploy, manage, and monitor full-stack apps on Locus without leaving your editor.",
+  "name": "shipshape",
+  "displayName": "ShipShape",
+  "description": "ShipShape — one-click deploy to Locus from VS Code.",
   "version": "0.1.0",
-  "publisher": "locus",
+  "publisher": "shipshape",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/michael-nwachukwu/locus-deploy"
+    "url": "https://github.com/michael-nwachukwu/shipshape"
   },
   "keywords": [
-    "locus",
+    "shipshape",
     "deploy",
     "paas",
     "nextjs",
@@ -36,75 +36,75 @@
   "contributes": {
     "commands": [
       {
-        "command": "locus.deploy",
-        "title": "Locus: Deploy Workspace",
+        "command": "shipshape.deploy",
+        "title": "ShipShape: Deploy Workspace",
         "icon": "$(rocket)"
       },
       {
-        "command": "locus.openSettings",
-        "title": "Locus: Configure API Key"
+        "command": "shipshape.openSettings",
+        "title": "ShipShape: Configure Locus API Key"
       },
       {
-        "command": "locus.configureAiApiKey",
-        "title": "Locus: Configure Gemini API Key (for AI features)"
+        "command": "shipshape.configureAiApiKey",
+        "title": "ShipShape: Configure Gemini API Key (for AI features)"
       },
       {
-        "command": "locus.viewLogs",
-        "title": "Locus: View Logs",
+        "command": "shipshape.viewLogs",
+        "title": "ShipShape: View Logs",
         "icon": "$(output)"
       },
       {
-        "command": "locus.openUrl",
-        "title": "Locus: Open Live URL",
+        "command": "shipshape.openUrl",
+        "title": "ShipShape: Open Live URL",
         "icon": "$(link-external)"
       },
       {
-        "command": "locus.restart",
-        "title": "Locus: Restart Service",
+        "command": "shipshape.restart",
+        "title": "ShipShape: Restart Service",
         "icon": "$(refresh)"
       },
       {
-        "command": "locus.rollback",
-        "title": "Locus: Rollback Deployment",
+        "command": "shipshape.rollback",
+        "title": "ShipShape: Rollback Deployment",
         "icon": "$(history)"
       },
       {
-        "command": "locus.manageEnvVars",
-        "title": "Locus: Manage Environment Variables",
+        "command": "shipshape.manageEnvVars",
+        "title": "ShipShape: Manage Environment Variables",
         "icon": "$(settings-gear)"
       },
       {
-        "command": "locus.refreshServices",
-        "title": "Locus: Refresh Services",
+        "command": "shipshape.refreshServices",
+        "title": "ShipShape: Refresh Services",
         "icon": "$(refresh)"
       },
       {
-        "command": "locus.deployNL",
-        "title": "Locus: Deploy with AI",
+        "command": "shipshape.deployNL",
+        "title": "ShipShape: Deploy with AI",
         "icon": "$(sparkle)"
       },
       {
-        "command": "locus.provisionTenant",
-        "title": "Locus: Provision Customer Environment"
+        "command": "shipshape.provisionTenant",
+        "title": "ShipShape: Provision Customer Environment"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "locus-sidebar",
-          "title": "Locus",
-          "icon": "media/icons/locus.svg"
+          "id": "shipshape-sidebar",
+          "title": "ShipShape",
+          "icon": "media/icons/shipshape.svg"
         }
       ]
     },
     "views": {
-      "locus-sidebar": [
+      "shipshape-sidebar": [
         {
-          "id": "locus.serviceExplorer",
+          "id": "shipshape.serviceExplorer",
           "name": "Services"
         },
         {
-          "id": "locus.deploymentHistory",
+          "id": "shipshape.deploymentHistory",
           "name": "Deployments"
         }
       ]
@@ -112,58 +112,67 @@
     "menus": {
       "view/title": [
         {
-          "command": "locus.refreshServices",
-          "when": "view == locus.serviceExplorer",
+          "command": "shipshape.refreshServices",
+          "when": "view == shipshape.serviceExplorer",
           "group": "navigation"
         },
         {
-          "command": "locus.deploy",
-          "when": "view == locus.serviceExplorer",
+          "command": "shipshape.deploy",
+          "when": "view == shipshape.serviceExplorer",
           "group": "navigation"
         }
       ],
       "view/item/context": [
         {
-          "command": "locus.deploy",
+          "command": "shipshape.deploy",
           "when": "viewItem == service",
           "group": "1_actions@1"
         },
         {
-          "command": "locus.restart",
+          "command": "shipshape.restart",
           "when": "viewItem == service",
           "group": "1_actions@2"
         },
         {
-          "command": "locus.rollback",
+          "command": "shipshape.rollback",
           "when": "viewItem == service || viewItem == deployment",
           "group": "1_actions@3"
         },
         {
-          "command": "locus.viewLogs",
+          "command": "shipshape.viewLogs",
           "when": "viewItem == service || viewItem == deployment",
           "group": "1_actions@4"
         },
         {
-          "command": "locus.manageEnvVars",
+          "command": "shipshape.manageEnvVars",
           "when": "viewItem == service",
           "group": "1_actions@5"
         },
         {
-          "command": "locus.openUrl",
+          "command": "shipshape.openUrl",
           "when": "viewItem == service",
           "group": "1_actions@6"
         }
       ]
     },
+    "icons": {
+      "shipshape-logo": {
+        "description": "ShipShape sailboat logo",
+        "default": {
+          "fontPath": "./media/fonts/shipshape-icons.woff",
+          "fontCharacter": "\\E001"
+        }
+      }
+    },
     "configuration": {
-      "title": "Locus Deploy",
+      "title": "ShipShape",
       "properties": {
-        "locus.githubRepo": {
+        "shipshape.githubRepo": {
           "type": "string",
           "description": "GitHub repo in format owner/repo",
           "scope": "workspace"
         },
-        "locus.defaultRegion": {
+        "shipshape.defaultRegion": {
           "type": "string",
           "default": "us-east-1",
           "enum": [
@@ -183,12 +192,15 @@
     "vscode:prepublish": "node esbuild.js --production",
     "compile": "node esbuild.js",
     "watch": "node esbuild.js --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:icon-font": "node scripts/build-icon-font.js"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.85.0",
     "esbuild": "^0.20.0",
+    "svg2ttf": "^6.0.3",
+    "ttf2woff": "^3.0.0",
     "typescript": "^5.3.0"
   }
 }

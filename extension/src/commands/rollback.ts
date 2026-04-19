@@ -9,7 +9,7 @@ export function registerRollbackCommand(
 ): void {
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      'locus.rollback',
+      'shipshape.rollback',
       async (node?: DeploymentNode | ServiceNode) => {
         let deploymentId: string | undefined;
         let label: string | undefined;
@@ -71,7 +71,7 @@ export function registerRollbackCommand(
           vscode.window.showInformationMessage(
             `Rollback triggered. It may take a minute to apply.`
           );
-          await vscode.commands.executeCommand('locus.refreshServices');
+          await vscode.commands.executeCommand('shipshape.refreshServices');
         } catch (err) {
           await showError(err, 'Rollback failed');
         }

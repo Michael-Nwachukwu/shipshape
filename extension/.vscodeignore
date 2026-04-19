@@ -9,3 +9,4 @@ esbuild.js
 **/*.ts
 node_modules/**
 *.vsix
+scripts/**

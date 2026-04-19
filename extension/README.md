@@ -1,6 +1,6 @@
-# Locus Deploy — VS Code Extension
+# ShipShape — VS Code Extension
 
-Deploy, manage, and monitor full-stack apps on **Locus** without leaving your editor.
+ShipShape — one-click deploy to **Locus** from VS Code. Deploy, manage, and monitor full-stack apps on the Locus PaaS without leaving your editor.
 
 Built for the Paygentic Hackathon #2 — _Build with Locus_ track.
 
@@ -8,7 +8,7 @@ Built for the Paygentic Hackathon #2 — _Build with Locus_ track.
 
 ## What it does
 
-**One-click deploy from the editor.** Open any Next.js / Express / FastAPI / Django / Rails / Dockerfile project, hit `Locus: Deploy Workspace`, and watch build logs stream in real time as your app goes live on an HTTPS URL — no browser, no terminal, no config file hand-writing.
+**One-click deploy from the editor.** Open any Next.js / Express / FastAPI / Django / Rails / Dockerfile project, hit `ShipShape: Deploy Workspace`, and watch build logs stream in real time as your app goes live on an HTTPS URL — no browser, no terminal, no config file hand-writing.
 
 ### Highlights
 
@@ -35,7 +35,7 @@ Built for the Paygentic Hackathon #2 — _Build with Locus_ track.
 ### Install the `.vsix`
 
 ```bash
-code --install-extension locus-deploy-0.1.0.vsix
+code --install-extension shipshape-0.1.0.vsix
 ```
 
 Or from inside VS Code: `Extensions` panel → `...` menu → `Install from VSIX...` → pick the file.
@@ -43,8 +43,8 @@ Or from inside VS Code: `Extensions` panel → `...` menu → `Install from VSIX
 ### Configure
 
 1. Open the Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`)
-2. Run **`Locus: Configure API Key`** and paste your `claw_...` key
-3. (Optional but recommended) Run **`Locus: Configure Gemini API Key`** with a free key from [aistudio.google.com/apikey](https://aistudio.google.com/apikey) — this enables AI failure diagnosis
+2. Run **`ShipShape: Configure Locus API Key`** and paste your `claw_...` key
+3. (Optional but recommended) Run **`ShipShape: Configure Gemini API Key`** with a free key from [aistudio.google.com/apikey](https://aistudio.google.com/apikey) — this enables AI failure diagnosis
 
 ---
 
@@ -53,8 +53,8 @@ Or from inside VS Code: `Extensions` panel → `...` menu → `Install from VSIX
 ### First deploy
 
 1. Open your project folder in VS Code
-2. Click the rocket icon in the activity bar (left sidebar) → Locus panel opens
-3. `Cmd+Shift+P` → **`Locus: Deploy Workspace`**
+2. Click the rocket icon in the activity bar (left sidebar) → ShipShape panel opens
+3. `Cmd+Shift+P` → **`ShipShape: Deploy Workspace`**
 4. Follow the prompts: confirm detected project type, review generated `.locusbuild`, enter GitHub repo (`owner/repo`)
 5. Watch build logs stream into the output channel; status bar updates live
 6. When healthy, a notification shows the live URL — click **Open in Browser**
@@ -92,15 +92,15 @@ When a deploy fails, if you have a Gemini key configured, the extension will:
 
 | Command | Description |
 |---|---|
-| `Locus: Deploy Workspace` | One-click deploy (the main command) |
-| `Locus: Configure API Key` | Set your Locus Build API key |
-| `Locus: Configure Gemini API Key` | Set your Gemini key (for AI features) |
-| `Locus: View Logs` | Stream runtime logs for a service |
-| `Locus: Open Live URL` | Open a service URL |
-| `Locus: Restart Service` | Restart running containers |
-| `Locus: Rollback Deployment` | Roll back to a previous healthy deploy |
-| `Locus: Manage Environment Variables` | Open the env var panel |
-| `Locus: Refresh Services` | Reload the sidebar tree |
+| `ShipShape: Deploy Workspace` | One-click deploy (the main command) |
+| `ShipShape: Configure Locus API Key` | Set your Locus Build API key |
+| `ShipShape: Configure Gemini API Key` | Set your Gemini key (for AI features) |
+| `ShipShape: View Logs` | Stream runtime logs for a service |
+| `ShipShape: Open Live URL` | Open a service URL |
+| `ShipShape: Restart Service` | Restart running containers |
+| `ShipShape: Rollback Deployment` | Roll back to a previous healthy deploy |
+| `ShipShape: Manage Environment Variables` | Open the env var panel |
+| `ShipShape: Refresh Services` | Reload the sidebar tree |
 
 ---
 
@@ -110,8 +110,8 @@ Set in workspace or user settings:
 
 | Setting | Default | Description |
 |---|---|---|
-| `locus.githubRepo` | — | Default GitHub repo in `owner/repo` format |
-| `locus.defaultRegion` | `us-east-1` | Default Locus region (`us-east-1` or `sa-east-1`) |
+| `shipshape.githubRepo` | — | Default GitHub repo in `owner/repo` format |
+| `shipshape.defaultRegion` | `us-east-1` | Default Locus region (`us-east-1` or `sa-east-1`) |
 
 API keys are stored in VS Code SecretStorage — never in settings, never logged.
 

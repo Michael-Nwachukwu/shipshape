@@ -8,7 +8,7 @@ export function registerRestartCommand(
   client: LocusClient
 ): void {
   context.subscriptions.push(
-    vscode.commands.registerCommand('locus.restart', async (node?: ServiceNode) => {
+    vscode.commands.registerCommand('shipshape.restart', async (node?: ServiceNode) => {
       if (!(node instanceof ServiceNode)) {
         vscode.window.showInformationMessage(
           'Right-click a service in the Services sidebar to restart it.'
@@ -48,7 +48,7 @@ export function registerRestartCommand(
         vscode.window.showInformationMessage(
           `${node.service.name} is restarting. It may take a minute to come back up.`
         );
-        await vscode.commands.executeCommand('locus.refreshServices');
+        await vscode.commands.executeCommand('shipshape.refreshServices');
       } catch (err) {
         await showError(err, 'Restart failed');
       }

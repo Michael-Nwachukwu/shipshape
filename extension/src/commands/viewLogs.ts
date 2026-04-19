@@ -9,7 +9,7 @@ const channels = new Map<string, vscode.OutputChannel>();
 function getChannel(key: string, title: string): vscode.OutputChannel {
   const existing = channels.get(key);
   if (existing) { return existing; }
-  const channel = vscode.window.createOutputChannel(`Locus: ${title}`);
+  const channel = vscode.window.createOutputChannel(`ShipShape: ${title}`);
   channels.set(key, channel);
   return channel;
 }
@@ -20,7 +20,7 @@ export function registerViewLogsCommand(
 ): void {
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      'locus.viewLogs',
+      'shipshape.viewLogs',
       async (node?: ServiceNode | DeploymentNode) => {
         if (node instanceof DeploymentNode) {
           return viewDeploymentLogs(client, node);

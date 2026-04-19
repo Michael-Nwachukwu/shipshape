@@ -9,12 +9,12 @@ export type StatusBarState =
   | 'failed';
 
 const STATUS_BAR_CONFIGS: Record<StatusBarState, { text: string; tooltip: string }> = {
-  idle:      { text: '$(rocket) Locus',                   tooltip: 'Click to deploy' },
-  detecting: { text: '$(search) Locus: Detecting...',     tooltip: 'Detecting project type' },
-  building:  { text: '$(tools) Locus: Building...',       tooltip: 'Building Docker image (2-4 min)' },
-  deploying: { text: '$(sync~spin) Locus: Deploying...',  tooltip: 'Starting container (1-3 min)' },
-  healthy:   { text: '$(check) Locus: Live',              tooltip: 'Click to open live URL' },
-  failed:    { text: '$(error) Locus: Failed',            tooltip: 'Click to view logs' },
+  idle:      { text: '$(shipshape-logo) ShipShape',           tooltip: 'Click to deploy' },
+  detecting: { text: '$(search) ShipShape: Detecting...',     tooltip: 'Detecting project type' },
+  building:  { text: '$(tools) ShipShape: Building...',       tooltip: 'Building Docker image (2-4 min)' },
+  deploying: { text: '$(sync~spin) ShipShape: Deploying...',  tooltip: 'Starting container (1-3 min)' },
+  healthy:   { text: '$(check) ShipShape: Live',              tooltip: 'Click to open live URL' },
+  failed:    { text: '$(error) ShipShape: Failed',            tooltip: 'Click to view logs' },
 };
 
 let _item: vscode.StatusBarItem | undefined;
@@ -42,10 +42,10 @@ export function setState(state: StatusBarState, liveUrl?: string): void {
     };
   } else if (state === 'failed') {
     _item.tooltip = config.tooltip;
-    _item.command = 'locus.viewLogs';
+    _item.command = 'shipshape.viewLogs';
   } else {
     _item.tooltip = config.tooltip;
-    _item.command = 'locus.deploy';
+    _item.command = 'shipshape.deploy';
   }
 }
 

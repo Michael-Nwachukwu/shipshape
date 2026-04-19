@@ -31,12 +31,12 @@ export class EnvVarProvider {
     }
 
     const panel = vscode.window.createWebviewPanel(
-      'locus.envVars',
+      'shipshape.envVars',
       `Env Vars — ${serviceName}`,
       vscode.ViewColumn.Active,
       { enableScripts: true, retainContextWhenHidden: true }
     );
-    panel.iconPath = vscode.Uri.joinPath(this.extensionUri, 'media', 'icons', 'locus.svg');
+    panel.iconPath = vscode.Uri.joinPath(this.extensionUri, 'media', 'icons', 'shipshape.svg');
     panel.webview.html = this.renderHtml(panel.webview, serviceName);
 
     this.panels.set(serviceId, panel);
@@ -89,7 +89,7 @@ export class EnvVarProvider {
     vscode.window.showInformationMessage(
       `Env vars saved. ${serviceName} is redeploying — watch the sidebar.`
     );
-    vscode.commands.executeCommand('locus.refreshServices');
+    vscode.commands.executeCommand('shipshape.refreshServices');
   }
 
   private post(panel: vscode.WebviewPanel, message: OutboundMessage): void {

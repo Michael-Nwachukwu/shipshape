@@ -20,7 +20,7 @@ export async function findStoredApiKey(
   secrets: vscode.SecretStorage
 ): Promise<StoredApiKey | undefined> {
   // 1. SecretStorage (preferred — encrypted)
-  const fromSecrets = await secrets.get('locus.buildApiKey');
+  const fromSecrets = await secrets.get('shipshape.buildApiKey');
   if (fromSecrets) {
     return { key: fromSecrets, source: 'secrets' };
   }
@@ -50,7 +50,7 @@ async function readCliCredentials(): Promise<string | undefined> {
 
 // ─── Gemini API key (for AI failure diagnosis + auto-fix) ────────────────────
 
-const GEMINI_KEY_SECRET = 'locus.geminiApiKey';
+const GEMINI_KEY_SECRET = 'shipshape.geminiApiKey';
 
 /** Check SecretStorage only. */
 export async function findStoredAiKey(

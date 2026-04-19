@@ -8,7 +8,7 @@ export function registerOpenUrlCommand(
 ): void {
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      'locus.openUrl',
+      'shipshape.openUrl',
       async (arg?: string | ServiceNode) => {
         let url: string | undefined;
 
@@ -20,7 +20,7 @@ export function registerOpenUrlCommand(
 
         if (!url) {
           vscode.window.showInformationMessage(
-            'No live URL yet. Deploy your workspace first with "Locus: Deploy Workspace".'
+            'No live URL yet. Deploy your workspace first with "ShipShape: Deploy Workspace".'
           );
           return;
         }
