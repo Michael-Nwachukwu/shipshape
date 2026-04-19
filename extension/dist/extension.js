@@ -34,7 +34,7 @@ __export(extension_exports, {
   deactivate: () => deactivate
 });
 module.exports = __toCommonJS(extension_exports);
-var vscode14 = __toESM(require("vscode"));
+var vscode16 = __toESM(require("vscode"));
 
 // src/lib/credentials.ts
 var os = __toESM(require("os"));
@@ -1165,6 +1165,7 @@ async function runDeploy(context, client, logProvider) {
       await sleep(SERVICE_DISCOVERY_DELAY_MS);
       channel.appendLine(`\u{1F310} Live at: ${service.url}`);
       setState("healthy", service.url);
+      vscode10.commands.executeCommand("locus.refreshServices");
       const action = await vscode10.window.showInformationMessage(
         `Locus: ${service.name} is live at ${service.url}`,
         "Open in Browser",
@@ -1629,6 +1630,7 @@ async function applyFixAndRedeploy(fix, args) {
       await sleep(SERVICE_DISCOVERY_DELAY_MS);
       channel.appendLine(`\u{1F310} Live at: ${state.serviceUrl}`);
       setState("healthy", state.serviceUrl);
+      vscode10.commands.executeCommand("locus.refreshServices");
       const a = await vscode10.window.showInformationMessage(
         `Locus: Fix applied \u2014 ${state.serviceName} is live at ${state.serviceUrl}`,
         "Open in Browser"
@@ -1777,55 +1779,467 @@ function sleep(ms) {
 }
 
 // src/commands/rollback.ts
-var vscode11 = __toESM(require("vscode"));
-function registerRollbackCommand(context, _client) {
-  context.subscriptions.push(
-    vscode11.commands.registerCommand("locus.rollback", async (deploymentId) => {
-      if (!deploymentId) {
-        vscode11.window.showInformationMessage(
-          "Rollback \u2014 right-click a deployment in the Services sidebar to use this."
-        );
-        return;
-      }
-      vscode11.window.showInformationMessage(`Rollback for ${deploymentId} \u2014 coming in Phase 3.`);
-    })
-  );
-}
-
-// src/commands/openUrl.ts
 var vscode12 = __toESM(require("vscode"));
-function registerOpenUrlCommand(context, _client) {
-  context.subscriptions.push(
-    vscode12.commands.registerCommand("locus.openUrl", async (serviceUrl) => {
-      if (serviceUrl) {
-        await vscode12.env.openExternal(vscode12.Uri.parse(serviceUrl));
-        return;
-      }
-      vscode12.window.showInformationMessage(
-        'No live URL yet. Deploy your workspace first with "Locus: Deploy Workspace".'
-      );
-    })
-  );
-}
 
 // src/providers/ServiceTreeProvider.ts
-var vscode13 = __toESM(require("vscode"));
+var vscode11 = __toESM(require("vscode"));
+var ProjectNode = class extends vscode11.TreeItem {
+  constructor(project) {
+    super(project.name, vscode11.TreeItemCollapsibleState.Expanded);
+    this.project = project;
+    this.kind = "project";
+    this.contextValue = "project";
+    this.iconPath = new vscode11.ThemeIcon("folder");
+    this.tooltip = `Region: ${project.region}
+ID: ${project.id}`;
+    this.description = project.region;
+  }
+};
+var EnvironmentNode = class extends vscode11.TreeItem {
+  constructor(environment) {
+    super(environment.name, vscode11.TreeItemCollapsibleState.Expanded);
+    this.environment = environment;
+    this.kind = "environment";
+    this.contextValue = "environment";
+    this.iconPath = new vscode11.ThemeIcon("server-environment");
+    this.description = environment.type;
+    this.tooltip = `Environment: ${environment.name} (${environment.type})`;
+  }
+};
+var ServiceNode = class extends vscode11.TreeItem {
+  constructor(service) {
+    super(service.name, vscode11.TreeItemCollapsibleState.Collapsed);
+    this.service = service;
+    this.kind = "service";
+    this.contextValue = "service";
+    this.iconPath = iconForStatus(service.deploymentStatus);
+    this.description = service.deploymentStatus ?? "not deployed";
+    this.tooltip = [
+      `Service: ${service.name}`,
+      `Status: ${service.deploymentStatus ?? "not deployed"}`,
+      service.url ? `URL: ${service.url}` : void 0,
+      service.lastDeployedAt ? `Last deploy: ${service.lastDeployedAt}` : void 0,
+      "",
+      "Click to stream logs. Right-click for more actions."
+    ].filter((x) => x !== void 0).join("\n");
+    this.command = {
+      command: "locus.viewLogs",
+      title: "View Logs",
+      arguments: [this]
+    };
+  }
+};
+var DeploymentNode = class extends vscode11.TreeItem {
+  constructor(deployment, serviceId) {
+    super(`Deploy #${deployment.version}`, vscode11.TreeItemCollapsibleState.None);
+    this.deployment = deployment;
+    this.serviceId = serviceId;
+    this.kind = "deployment";
+    this.contextValue = "deployment";
+    this.iconPath = iconForStatus(deployment.status);
+    this.description = `${deployment.status} \u2014 ${formatAgo(deployment.createdAt)}`;
+    this.tooltip = [
+      `Deployment #${deployment.version}`,
+      `Status: ${deployment.status}`,
+      `Created: ${deployment.createdAt}`,
+      deployment.durationMs !== null && deployment.durationMs !== void 0 ? `Duration: ${Math.round(deployment.durationMs / 1e3)}s` : void 0,
+      "",
+      "Click to view logs. Right-click to roll back."
+    ].filter((x) => x !== void 0).join("\n");
+    this.command = {
+      command: "locus.viewLogs",
+      title: "View Logs",
+      arguments: [this]
+    };
+  }
+};
+var MessageNode = class extends vscode11.TreeItem {
+  constructor(label, icon) {
+    super(label, vscode11.TreeItemCollapsibleState.None);
+    this.kind = "message";
+    if (icon) {
+      this.iconPath = new vscode11.ThemeIcon(icon);
+    }
+    this.contextValue = "message";
+  }
+};
+function iconForStatus(status) {
+  switch (status) {
+    case "healthy":
+      return new vscode11.ThemeIcon("vm-running", new vscode11.ThemeColor("charts.green"));
+    case "deploying":
+    case "building":
+    case "queued":
+      return new vscode11.ThemeIcon("sync~spin", new vscode11.ThemeColor("charts.yellow"));
+    case "failed":
+      return new vscode11.ThemeIcon("error", new vscode11.ThemeColor("charts.red"));
+    case "rolled_back":
+      return new vscode11.ThemeIcon("history", new vscode11.ThemeColor("charts.orange"));
+    case "cancelled":
+      return new vscode11.ThemeIcon("circle-slash", new vscode11.ThemeColor("charts.gray"));
+    default:
+      return new vscode11.ThemeIcon("vm", new vscode11.ThemeColor("charts.gray"));
+  }
+}
+function formatAgo(iso) {
+  const then = new Date(iso).getTime();
+  if (isNaN(then)) {
+    return iso;
+  }
+  const diffMs = Date.now() - then;
+  const sec = Math.floor(diffMs / 1e3);
+  if (sec < 60) {
+    return `${sec}s ago`;
+  }
+  const min = Math.floor(sec / 60);
+  if (min < 60) {
+    return `${min}m ago`;
+  }
+  const hr = Math.floor(min / 60);
+  if (hr < 24) {
+    return `${hr}h ago`;
+  }
+  const day = Math.floor(hr / 24);
+  return `${day}d ago`;
+}
+var TtlCache = class {
+  constructor(ttlMs) {
+    this.ttlMs = ttlMs;
+    this.map = /* @__PURE__ */ new Map();
+  }
+  get(key) {
+    const entry = this.map.get(key);
+    if (!entry) {
+      return void 0;
+    }
+    if (Date.now() > entry.expiresAt) {
+      this.map.delete(key);
+      return void 0;
+    }
+    return entry.value;
+  }
+  set(key, value) {
+    this.map.set(key, { value, expiresAt: Date.now() + this.ttlMs });
+  }
+  clear() {
+    this.map.clear();
+  }
+};
 var ServiceTreeProvider = class {
-  constructor(_client) {
-    this._client = _client;
-    this._onDidChangeTreeData = new vscode13.EventEmitter();
+  // 30-second TTL per spec
+  constructor(client) {
+    this.client = client;
+    this._onDidChangeTreeData = new vscode11.EventEmitter();
     this.onDidChangeTreeData = this._onDidChangeTreeData.event;
+    this.cache = new TtlCache(3e4);
   }
   refresh() {
+    this.cache.clear();
     this._onDidChangeTreeData.fire();
   }
   getTreeItem(element) {
     return element;
   }
-  getChildren(_element) {
-    return [];
+  async getChildren(element) {
+    try {
+      if (!element) {
+        return await this.loadProjects();
+      }
+      if (element instanceof ProjectNode) {
+        return await this.loadEnvironments(element.project);
+      }
+      if (element instanceof EnvironmentNode) {
+        return await this.loadServices(element.environment);
+      }
+      if (element instanceof ServiceNode) {
+        return await this.loadDeployments(element.service);
+      }
+      return [];
+    } catch (err) {
+      const message = err instanceof LocusError ? `Error: ${err.message}` : `Error: ${err.message}`;
+      return [new MessageNode(message, "warning")];
+    }
+  }
+  async loadProjects() {
+    const cached = this.cache.get("projects");
+    const projects = cached ?? await this.client.listProjects();
+    if (!cached) {
+      this.cache.set("projects", projects);
+    }
+    if (projects.length === 0) {
+      return [new MessageNode('No projects yet \u2014 run "Locus: Deploy Workspace"', "info")];
+    }
+    return projects.map((p) => new ProjectNode(p));
+  }
+  async loadEnvironments(project) {
+    const key = `envs:${project.id}`;
+    const cached = this.cache.get(key);
+    const envs = cached ?? await this.client.listEnvironments(project.id);
+    if (!cached) {
+      this.cache.set(key, envs);
+    }
+    if (envs.length === 0) {
+      return [new MessageNode("(no environments)", "info")];
+    }
+    return envs.map((e) => new EnvironmentNode(e));
+  }
+  async loadServices(env3) {
+    const key = `svcs:${env3.id}`;
+    const cached = this.cache.get(key);
+    const services = cached ?? await this.client.listServices(env3.id);
+    if (!cached) {
+      this.cache.set(key, services);
+    }
+    if (services.length === 0) {
+      return [new MessageNode("(no services)", "info")];
+    }
+    return services.map((s) => new ServiceNode(s));
+  }
+  async loadDeployments(service) {
+    const key = `deps:${service.id}`;
+    const cached = this.cache.get(key);
+    const deployments = cached ?? await this.client.listDeployments(service.id, 5);
+    if (!cached) {
+      this.cache.set(key, deployments);
+    }
+    if (deployments.length === 0) {
+      return [new MessageNode("(no deployments)", "info")];
+    }
+    return deployments.map((d) => new DeploymentNode(d, service.id));
   }
 };
+
+// src/commands/rollback.ts
+function registerRollbackCommand(context, client) {
+  context.subscriptions.push(
+    vscode12.commands.registerCommand(
+      "locus.rollback",
+      async (node) => {
+        let deploymentId;
+        let label;
+        if (node instanceof DeploymentNode) {
+          deploymentId = node.deployment.id;
+          label = `Deploy #${node.deployment.version}`;
+        } else if (node instanceof ServiceNode) {
+          try {
+            const deployments = await client.listDeployments(node.service.id, 10);
+            const target = deployments.find(
+              (d) => d.status === "healthy" && d.id !== node.service.lastDeploymentId
+            );
+            if (!target) {
+              vscode12.window.showWarningMessage(
+                `No previous healthy deployment found for ${node.service.name}.`
+              );
+              return;
+            }
+            deploymentId = target.id;
+            label = `Deploy #${target.version}`;
+          } catch (err) {
+            vscode12.window.showErrorMessage(
+              `Failed to find previous deployment: ${err.message}`
+            );
+            return;
+          }
+        }
+        if (!deploymentId) {
+          vscode12.window.showInformationMessage(
+            "Right-click a deployment in the Services sidebar to roll back."
+          );
+          return;
+        }
+        const confirm = await vscode12.window.showWarningMessage(
+          `Roll back to ${label}? This will redeploy the previous image.`,
+          { modal: true },
+          "Rollback"
+        );
+        if (confirm !== "Rollback") {
+          return;
+        }
+        const reason = await vscode12.window.showInputBox({
+          prompt: "Rollback reason (optional)",
+          placeHolder: 'e.g. "regression in latest deploy"'
+        });
+        try {
+          await vscode12.window.withProgress(
+            {
+              location: vscode12.ProgressLocation.Notification,
+              title: `Rolling back to ${label}...`,
+              cancellable: false
+            },
+            async () => {
+              await client.rollbackDeployment(deploymentId, reason || void 0);
+            }
+          );
+          vscode12.window.showInformationMessage(
+            `Rollback triggered. It may take a minute to apply.`
+          );
+          await vscode12.commands.executeCommand("locus.refreshServices");
+        } catch (err) {
+          const msg = err instanceof LocusError ? err.message : err.message;
+          vscode12.window.showErrorMessage(`Rollback failed: ${msg}`);
+        }
+      }
+    )
+  );
+}
+
+// src/commands/openUrl.ts
+var vscode13 = __toESM(require("vscode"));
+function registerOpenUrlCommand(context, _client) {
+  context.subscriptions.push(
+    vscode13.commands.registerCommand(
+      "locus.openUrl",
+      async (arg) => {
+        let url;
+        if (typeof arg === "string") {
+          url = arg;
+        } else if (arg instanceof ServiceNode) {
+          url = arg.service.url;
+        }
+        if (!url) {
+          vscode13.window.showInformationMessage(
+            'No live URL yet. Deploy your workspace first with "Locus: Deploy Workspace".'
+          );
+          return;
+        }
+        await vscode13.env.openExternal(vscode13.Uri.parse(url));
+      }
+    )
+  );
+}
+
+// src/commands/restart.ts
+var vscode14 = __toESM(require("vscode"));
+function registerRestartCommand(context, client) {
+  context.subscriptions.push(
+    vscode14.commands.registerCommand("locus.restart", async (node) => {
+      if (!(node instanceof ServiceNode)) {
+        vscode14.window.showInformationMessage(
+          "Right-click a service in the Services sidebar to restart it."
+        );
+        return;
+      }
+      const confirm = await vscode14.window.showWarningMessage(
+        `Restart ${node.service.name}?`,
+        { modal: true },
+        "Restart"
+      );
+      if (confirm !== "Restart") {
+        return;
+      }
+      try {
+        await vscode14.window.withProgress(
+          {
+            location: vscode14.ProgressLocation.Notification,
+            title: `Restarting ${node.service.name}...`,
+            cancellable: false
+          },
+          async () => {
+            try {
+              await client.restartService(node.service.id);
+            } catch (err) {
+              if (err instanceof LocusError && err.statusCode === 409) {
+                await client.redeployService(node.service.id);
+                return;
+              }
+              throw err;
+            }
+          }
+        );
+        vscode14.window.showInformationMessage(
+          `${node.service.name} is restarting. It may take a minute to come back up.`
+        );
+        await vscode14.commands.executeCommand("locus.refreshServices");
+      } catch (err) {
+        const msg = err instanceof LocusError ? err.message : err.message;
+        vscode14.window.showErrorMessage(`Restart failed: ${msg}`);
+      }
+    })
+  );
+}
+
+// src/commands/viewLogs.ts
+var vscode15 = __toESM(require("vscode"));
+var channels = /* @__PURE__ */ new Map();
+function getChannel(key, title) {
+  const existing = channels.get(key);
+  if (existing) {
+    return existing;
+  }
+  const channel = vscode15.window.createOutputChannel(`Locus: ${title}`);
+  channels.set(key, channel);
+  return channel;
+}
+function registerViewLogsCommand(context, client) {
+  context.subscriptions.push(
+    vscode15.commands.registerCommand(
+      "locus.viewLogs",
+      async (node) => {
+        if (node instanceof DeploymentNode) {
+          return viewDeploymentLogs(client, node);
+        }
+        if (node instanceof ServiceNode) {
+          return viewServiceLogs(client, node);
+        }
+        vscode15.window.showInformationMessage(
+          "Right-click a service or deployment in the Services sidebar to view logs."
+        );
+      }
+    )
+  );
+  context.subscriptions.push({
+    dispose() {
+      for (const ch of channels.values()) {
+        ch.dispose();
+      }
+      channels.clear();
+    }
+  });
+}
+async function viewDeploymentLogs(client, node) {
+  const key = `dep:${node.deployment.id}`;
+  const channel = getChannel(key, `Deploy #${node.deployment.version}`);
+  channel.show(true);
+  channel.appendLine(
+    `\u2500\u2500 Deployment #${node.deployment.version} (${node.deployment.status}) \u2500\u2500`
+  );
+  try {
+    const snapshot = await client.getDeploymentLogs(node.deployment.id);
+    channel.appendLine(`Phase: ${snapshot.phase}  Status: ${snapshot.deploymentStatus}`);
+    if (snapshot.reason) {
+      channel.appendLine(`Reason: ${snapshot.reason}`);
+    }
+    channel.appendLine("\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500");
+    for (const line of snapshot.logs) {
+      channel.appendLine(formatLogLine(line));
+    }
+  } catch (err) {
+    const msg = err instanceof LocusError ? err.message : err.message;
+    channel.appendLine(`\u26A0 Failed to fetch logs: ${msg}`);
+  }
+}
+async function viewServiceLogs(client, node) {
+  const key = `svc:${node.service.id}`;
+  const channel = getChannel(key, node.service.name);
+  channel.show(true);
+  channel.appendLine(`\u2500\u2500 Streaming logs for ${node.service.name} \u2500\u2500`);
+  const controller = new AbortController();
+  const stopToken = new vscode15.CancellationTokenSource();
+  stopToken.token.onCancellationRequested(() => controller.abort());
+  try {
+    await client.streamServiceLogs(
+      node.service.id,
+      (line) => channel.appendLine(line),
+      controller.signal
+    );
+  } catch (err) {
+    if (err.name === "AbortError") {
+      return;
+    }
+    const msg = err instanceof LocusError ? err.message : err.message;
+    channel.appendLine(`\u26A0 Log stream ended: ${msg}`);
+  }
+}
 
 // src/extension.ts
 function activate(context) {
@@ -1834,9 +2248,9 @@ function activate(context) {
   context.subscriptions.push({ dispose });
   registerDeployCommand(context, client);
   context.subscriptions.push(
-    vscode14.commands.registerCommand("locus.openSettings", async () => {
+    vscode16.commands.registerCommand("locus.openSettings", async () => {
       const existing = await context.secrets.get("locus.buildApiKey");
-      const key = await vscode14.window.showInputBox({
+      const key = await vscode16.window.showInputBox({
         prompt: "Enter your Locus Build API key",
         password: true,
         placeHolder: "claw_...",
@@ -1853,33 +2267,25 @@ function activate(context) {
       }
       await context.secrets.store("locus.buildApiKey", key);
       client.clearTokenCache();
-      vscode14.window.showInformationMessage("Locus API key saved.");
+      vscode16.window.showInformationMessage("Locus API key saved.");
     })
   );
   registerRollbackCommand(context, client);
   registerOpenUrlCommand(context, client);
+  registerRestartCommand(context, client);
+  registerViewLogsCommand(context, client);
   context.subscriptions.push(
-    vscode14.commands.registerCommand("locus.viewLogs", () => {
-      vscode14.window.showInformationMessage(
-        "Log streaming will be available after your first deployment."
-      );
-    }),
-    vscode14.commands.registerCommand("locus.restart", () => {
-      vscode14.window.showInformationMessage(
-        "Restart service \u2014 coming in Phase 3 (right-click a service in the sidebar)."
-      );
-    }),
-    vscode14.commands.registerCommand("locus.manageEnvVars", () => {
-      vscode14.window.showInformationMessage(
+    vscode16.commands.registerCommand("locus.manageEnvVars", () => {
+      vscode16.window.showInformationMessage(
         "Environment variable manager \u2014 coming in Phase 4."
       );
     })
   );
   context.subscriptions.push(
-    vscode14.commands.registerCommand("locus.configureAiApiKey", async () => {
+    vscode16.commands.registerCommand("locus.configureAiApiKey", async () => {
       const existing = await findStoredAiKey(context.secrets);
       if (existing) {
-        const action = await vscode14.window.showInformationMessage(
+        const action = await vscode16.window.showInformationMessage(
           "A Gemini API key is already saved. Replace it?",
           "Replace",
           "Clear",
@@ -1887,7 +2293,7 @@ function activate(context) {
         );
         if (action === "Clear") {
           await clearAiKey(context.secrets);
-          vscode14.window.showInformationMessage("Gemini API key cleared.");
+          vscode16.window.showInformationMessage("Gemini API key cleared.");
           return;
         }
         if (action !== "Replace") {
@@ -1896,27 +2302,27 @@ function activate(context) {
       }
       const key = await promptForAiKey(context.secrets);
       if (key) {
-        vscode14.window.showInformationMessage("Gemini API key saved.");
+        vscode16.window.showInformationMessage("Gemini API key saved.");
       }
     })
   );
   context.subscriptions.push(
-    vscode14.commands.registerCommand("locus.deployNL", () => {
-      vscode14.window.showInformationMessage(
+    vscode16.commands.registerCommand("locus.deployNL", () => {
+      vscode16.window.showInformationMessage(
         "AI-powered deploy \u2014 coming in Phase 6 (Tier 3 stretch)."
       );
     }),
-    vscode14.commands.registerCommand("locus.provisionTenant", () => {
-      vscode14.window.showInformationMessage(
+    vscode16.commands.registerCommand("locus.provisionTenant", () => {
+      vscode16.window.showInformationMessage(
         "Multi-tenant provisioner \u2014 coming in Phase 6 (Tier 3 stretch)."
       );
     })
   );
   const treeProvider = new ServiceTreeProvider(client);
   context.subscriptions.push(
-    vscode14.window.registerTreeDataProvider("locus.serviceExplorer", treeProvider),
-    vscode14.window.registerTreeDataProvider("locus.deploymentHistory", treeProvider),
-    vscode14.commands.registerCommand("locus.refreshServices", () => treeProvider.refresh())
+    vscode16.window.registerTreeDataProvider("locus.serviceExplorer", treeProvider),
+    vscode16.window.registerTreeDataProvider("locus.deploymentHistory", treeProvider),
+    vscode16.commands.registerCommand("locus.refreshServices", () => treeProvider.refresh())
   );
 }
 function deactivate() {

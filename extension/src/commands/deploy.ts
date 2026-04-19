@@ -279,6 +279,7 @@ async function runDeploy(
       await sleep(SERVICE_DISCOVERY_DELAY_MS);
       channel.appendLine(`🌐 Live at: ${service.url}`);
       statusBar.setState('healthy', service.url);
+      vscode.commands.executeCommand('locus.refreshServices');
 
       const action = await vscode.window.showInformationMessage(
         `Locus: ${service.name} is live at ${service.url}`,
@@ -872,6 +873,7 @@ async function applyFixAndRedeploy(
       await sleep(SERVICE_DISCOVERY_DELAY_MS);
       channel.appendLine(`🌐 Live at: ${state.serviceUrl}`);
       statusBar.setState('healthy', state.serviceUrl);
+      vscode.commands.executeCommand('locus.refreshServices');
       const a = await vscode.window.showInformationMessage(
         `Locus: Fix applied — ${state.serviceName} is live at ${state.serviceUrl}`,
         'Open in Browser'

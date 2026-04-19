@@ -4,6 +4,8 @@ import { createStatusBar, dispose as disposeStatusBar } from './statusBar';
 import { registerDeployCommand } from './commands/deploy';
 import { registerRollbackCommand } from './commands/rollback';
 import { registerOpenUrlCommand } from './commands/openUrl';
+import { registerRestartCommand } from './commands/restart';
+import { registerViewLogsCommand } from './commands/viewLogs';
 import { ServiceTreeProvider } from './providers/ServiceTreeProvider';
 import { promptForAiKey, clearAiKey, findStoredAiKey } from './lib/credentials';
 
@@ -40,22 +42,14 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
 
-  // ── Tier 2 commands (stubs — implemented in Phase 3/4) ────────────────────
+  // ── Tier 2 commands (Phase 3 — service explorer actions) ─────────────────
 
   registerRollbackCommand(context, client);
   registerOpenUrlCommand(context, client);
+  registerRestartCommand(context, client);
+  registerViewLogsCommand(context, client);
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('locus.viewLogs', () => {
-      vscode.window.showInformationMessage(
-        'Log streaming will be available after your first deployment.'
-      );
-    }),
-    vscode.commands.registerCommand('locus.restart', () => {
-      vscode.window.showInformationMessage(
-        'Restart service — coming in Phase 3 (right-click a service in the sidebar).'
-      );
-    }),
     vscode.commands.registerCommand('locus.manageEnvVars', () => {
       vscode.window.showInformationMessage(
         'Environment variable manager — coming in Phase 4.'
@@ -104,7 +98,7 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
 
-  // ── Service explorer sidebar (Phase 3 — stub for now) ────────────────────
+  // ── Service explorer sidebar (Phase 3) ────────────────────────────────────
 
   const treeProvider = new ServiceTreeProvider(client);
   context.subscriptions.push(
