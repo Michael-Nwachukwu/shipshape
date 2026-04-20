@@ -59,6 +59,7 @@ export interface Service {
   deploymentStatus?: string;
   lastDeploymentId?: string;
   lastDeployedAt?: string;
+  autoDeploy?: boolean;
   runtime_instances?: RuntimeInstances | { status: 'not_deployed' };
 }
 
@@ -105,6 +106,26 @@ export interface Addon {
   status: 'provisioning' | 'available' | 'failed';
   environmentId: string;
   requiresRedeploy: boolean;
+}
+
+export interface ValidationRecord {
+  type: string;
+  name: string;
+  value: string;
+}
+
+export type DomainValidationStatus = 'pending' | 'validating' | 'validated' | 'failed';
+
+export interface Domain {
+  id: string;
+  domain: string;
+  projectId?: string;
+  serviceId?: string;
+  cnameTarget?: string;
+  validationRecords?: ValidationRecord[];
+  validationStatus?: DomainValidationStatus;
+  cnameVerified?: boolean;
+  certificateValidated?: boolean;
 }
 
 export interface ServiceSource {
@@ -337,6 +358,20 @@ export class LocusClient {
     });
   }
 
+  async fromLocusbuild(opts: {
+    name: string;
+    repo: string;
+    branch?: string;
+    locusbuild: object;
+  }): Promise<FromRepoResult> {
+    return this._request<FromRepoResult>('POST', '/projects/from-locusbuild', {
+      name: opts.name,
+      repo: opts.repo,
+      branch: opts.branch ?? 'main',
+      locusbuild: opts.locusbuild,
+    });
+  }
+
   async verifyLocusbuild(locusbuild: object): Promise<VerifyLocusbuildResult> {
     return this._request<VerifyLocusbuildResult>('POST', '/projects/verify-locusbuild', {
       locusbuild,
@@ -474,6 +509,45 @@ export class LocusClient {
 
   async deleteAddon(addonId: string): Promise<void> {
     return this._request('DELETE', `/addons/${addonId}`);
+  }
+
+  // ── Domains ───────────────────────────────────────────────────────────────
+
+  async listDomains(): Promise<Domain[]> {
+    const data = await this._request<{ domains: Domain[] }>('GET', '/domains');
+    return data.domains ?? [];
+  }
+
+  async listDomainsByProject(projectId: string): Promise<Domain[]> {
+    const data = await this._request<{ domains: Domain[] }>(
+      'GET',
+      `/domains/project/${projectId}`
+    );
+    return data.domains ?? [];
+  }
+
+  async getDomain(domainId: string): Promise<Domain> {
+    return this._request<Domain>('GET', `/domains/${domainId}`);
+  }
+
+  async createDomain(domain: string, projectId: string): Promise<Domain> {
+    return this._request<Domain>('POST', '/domains', { domain, projectId });
+  }
+
+  async verifyDomain(domainId: string): Promise<Domain> {
+    return this._request<Domain>('POST', `/domains/${domainId}/verify`);
+  }
+
+  async attachDomain(domainId: string, serviceId: string): Promise<Domain> {
+    return this._request<Domain>('POST', `/domains/${domainId}/attach`, { serviceId });
+  }
+
+  async detachDomain(domainId: string): Promise<void> {
+    await this._request('POST', `/domains/${domainId}/detach`);
+  }
+
+  async deleteDomain(domainId: string): Promise<void> {
+    await this._request('DELETE', `/domains/${domainId}`);
   }
 
   // ── Logs (non-streaming snapshot) ─────────────────────────────────────────

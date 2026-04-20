@@ -7,6 +7,7 @@ import {
   Service,
   Deployment,
   DeploymentStatus,
+  Domain,
 } from '../lib/locus';
 
 // ─── Node types ──────────────────────────────────────────────────────────────
@@ -35,15 +36,24 @@ export class EnvironmentNode extends vscode.TreeItem {
 
 export class ServiceNode extends vscode.TreeItem {
   readonly kind = 'service' as const;
-  constructor(public readonly service: Service) {
+  constructor(
+    public readonly service: Service,
+    public readonly domain?: Domain
+  ) {
     super(service.name, vscode.TreeItemCollapsibleState.Collapsed);
     this.contextValue = 'service';
     this.iconPath = iconForStatus(service.deploymentStatus as DeploymentStatus | undefined);
-    this.description = service.deploymentStatus ?? 'not deployed';
+    const statusDesc = service.deploymentStatus ?? 'not deployed';
+    const parts: string[] = [statusDesc];
+    if (service.autoDeploy) { parts.push('auto $(sync)'); }
+    if (domain) { parts.push('🌐'); }
+    this.description = parts.join(' · ');
     this.tooltip = [
       `Service: ${service.name}`,
       `Status: ${service.deploymentStatus ?? 'not deployed'}`,
+      `Auto-deploy: ${service.autoDeploy ? 'on' : 'off'}`,
       service.url ? `URL: ${service.url}` : undefined,
+      domain ? `🌐 https://${domain.domain}` : undefined,
       service.lastDeployedAt ? `Last deploy: ${service.lastDeployedAt}` : undefined,
       '',
       'Click to stream logs. Right-click for more actions.',
@@ -247,7 +257,35 @@ export class ServiceTreeProvider implements vscode.TreeDataProvider<LocusTreeNod
     if (services.length === 0) {
       return [new MessageNode('(no services)', 'info')];
     }
-    return services.map((s) => new ServiceNode(s));
+
+    const domainsByService = await this.loadDomainMap();
+    return services.map((s) => new ServiceNode(s, domainsByService.get(s.id)));
+  }
+
+  /**
+   * Fetch all workspace domains once per refresh cycle (30s TTL).
+   * Returns a map of serviceId → first attached Domain. Services without a
+   * domain simply won't be present in the map.
+   * Failures are swallowed — domains are a decorative annotation and must not
+   * break the tree for users who can list services but not domains.
+   */
+  private async loadDomainMap(): Promise<Map<string, Domain>> {
+    const cached = this.cache.get<Map<string, Domain>>('domainsByService');
+    if (cached) { return cached; }
+
+    const map = new Map<string, Domain>();
+    try {
+      const domains = await this.client.listDomains();
+      for (const d of domains) {
+        if (d.serviceId && !map.has(d.serviceId)) {
+          map.set(d.serviceId, d);
+        }
+      }
+    } catch {
+      // Non-fatal: tree still renders without the globe annotation.
+    }
+    this.cache.set('domainsByService', map);
+    return map;
   }
 
   private async loadDeployments(service: Service): Promise<LocusTreeNode[]> {

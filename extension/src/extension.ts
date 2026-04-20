@@ -6,8 +6,14 @@ import { registerRollbackCommand } from './commands/rollback';
 import { registerOpenUrlCommand } from './commands/openUrl';
 import { registerRestartCommand } from './commands/restart';
 import { registerViewLogsCommand } from './commands/viewLogs';
+import { registerDeployNLCommand } from './commands/deployNL';
+import { registerToggleAutoDeployCommand } from './commands/toggleAutoDeploy';
 import { ServiceTreeProvider, ServiceNode } from './providers/ServiceTreeProvider';
 import { EnvVarProvider } from './providers/EnvVarProvider';
+import { DomainProvider } from './providers/DomainProvider';
+import { LogOutputProvider } from './providers/LogOutputProvider';
+import { runAddDomain } from './commands/addDomain';
+import { runManageDomains } from './commands/manageDomains';
 import { promptForAiKey, clearAiKey, findStoredAiKey } from './lib/credentials';
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -64,6 +70,16 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
 
+  const domainProvider = new DomainProvider(client, context.extensionUri, context.globalState);
+  context.subscriptions.push(
+    vscode.commands.registerCommand('shipshape.addDomain', async (node?: ServiceNode) => {
+      await runAddDomain(context, client, domainProvider, node);
+    }),
+    vscode.commands.registerCommand('shipshape.manageDomains', async () => {
+      await runManageDomains(client);
+    })
+  );
+
   // ── AI key management (Gemini, for failure diagnosis + auto-fix) ──────────
 
   context.subscriptions.push(
@@ -90,14 +106,14 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
 
-  // ── Tier 3 commands (stubs) ───────────────────────────────────────────────
+  // ── Tier 3 commands ───────────────────────────────────────────────────────
+
+  const nlLogProvider = new LogOutputProvider(client);
+  context.subscriptions.push({ dispose: () => nlLogProvider.disposeAll() });
+  registerDeployNLCommand(context, client, nlLogProvider);
+  registerToggleAutoDeployCommand(context, client);
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('shipshape.deployNL', () => {
-      vscode.window.showInformationMessage(
-        'AI-powered deploy — coming in Phase 6 (Tier 3 stretch).'
-      );
-    }),
     vscode.commands.registerCommand('shipshape.provisionTenant', () => {
       vscode.window.showInformationMessage(
         'Multi-tenant provisioner — coming in Phase 6 (Tier 3 stretch).'

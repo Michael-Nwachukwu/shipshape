@@ -84,6 +84,21 @@
         "icon": "$(sparkle)"
       },
       {
+        "command": "shipshape.toggleAutoDeploy",
+        "title": "ShipShape: Toggle Auto-Deploy",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "shipshape.addDomain",
+        "title": "ShipShape: Add Custom Domain",
+        "icon": "$(globe)"
+      },
+      {
+        "command": "shipshape.manageDomains",
+        "title": "ShipShape: Manage Domains",
+        "icon": "$(globe)"
+      },
+      {
         "command": "shipshape.provisionTenant",
         "title": "ShipShape: Provision Customer Environment"
       }
@@ -152,6 +167,16 @@
           "command": "shipshape.openUrl",
           "when": "viewItem == service",
           "group": "1_actions@6"
+        },
+        {
+          "command": "shipshape.toggleAutoDeploy",
+          "when": "viewItem == service",
+          "group": "1_actions@7"
+        },
+        {
+          "command": "shipshape.addDomain",
+          "when": "viewItem == service",
+          "group": "1_actions@8"
         }
       ]
     },

@@ -1,10 +1,6 @@
 import * as vscode from 'vscode';
 import {
   LocusClient,
-  LocusError,
-  Deployment,
-  DeploymentStatus,
-  TERMINAL_STATUSES,
   FromRepoResult,
   formatLogLine,
 } from '../lib/locus';
@@ -31,10 +27,11 @@ import {
 import { commitAndPushFile } from '../lib/git';
 import { LogOutputProvider } from '../providers/LogOutputProvider';
 import * as statusBar from '../statusBar';
-
-const POLL_INTERVAL_MS = 60_000;
-const POLL_TIMEOUT_MS = 15 * 60_000;
-const SERVICE_DISCOVERY_DELAY_MS = 60_000;
+import {
+  pollDeployment,
+  sleep,
+  SERVICE_DISCOVERY_DELAY_MS,
+} from '../lib/deployPolling';
 
 const REPO_REGEX = /^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/;
 const GITHUB_URL_REGEX = /github\.com[/:]([a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+?)(?:\.git)?(?:\/.*)?$/;
@@ -591,59 +588,6 @@ async function syncServiceFromLocusBuild(
   }
 }
 
-// ─── Polling ────────────────────────────────────────────────────────────────
-
-async function pollDeployment(
-  client: LocusClient,
-  deploymentId: string,
-  channel: vscode.OutputChannel
-): Promise<Deployment> {
-  const startTime = Date.now();
-  let lastStatus: DeploymentStatus | null = null;
-
-  // Immediate first poll, then 60s interval
-  for (;;) {
-    if (Date.now() - startTime > POLL_TIMEOUT_MS) {
-      channel.appendLine(`⚠ Polling timed out after ${POLL_TIMEOUT_MS / 60000} minutes.`);
-      throw new Error('Deployment polling timeout');
-    }
-
-    const deployment = await client.getDeployment(deploymentId);
-
-    if (deployment.status !== lastStatus) {
-      channel.appendLine(`[${new Date().toISOString()}] Status: ${deployment.status}`);
-      updateStatusBarForStatus(deployment.status);
-      lastStatus = deployment.status;
-    }
-
-    if (TERMINAL_STATUSES.includes(deployment.status)) {
-      return deployment;
-    }
-
-    await sleep(POLL_INTERVAL_MS);
-  }
-}
-
-function updateStatusBarForStatus(status: DeploymentStatus): void {
-  switch (status) {
-    case 'queued':
-    case 'building':
-      statusBar.setState('building');
-      break;
-    case 'deploying':
-      statusBar.setState('deploying');
-      break;
-    case 'healthy':
-      // Handled by caller after the discovery delay
-      break;
-    case 'failed':
-    case 'cancelled':
-    case 'rolled_back':
-      statusBar.setState('failed');
-      break;
-  }
-}
-
 // ─── Failure diagnosis ──────────────────────────────────────────────────────
 
 interface Diagnosis {
@@ -1097,8 +1041,4 @@ function handleDeployError(err: unknown): void {
 
 function getWorkspaceRoot(): vscode.Uri | undefined {
   return vscode.workspace.workspaceFolders?.[0]?.uri;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
 }
