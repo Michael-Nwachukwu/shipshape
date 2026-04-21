@@ -14,7 +14,14 @@ import { DomainProvider } from './providers/DomainProvider';
 import { LogOutputProvider } from './providers/LogOutputProvider';
 import { runAddDomain } from './commands/addDomain';
 import { runManageDomains } from './commands/manageDomains';
-import { promptForAiKey, clearAiKey, findStoredAiKey } from './lib/credentials';
+import {
+  promptForAiKey,
+  clearAiKey,
+  findStoredAiKey,
+  promptForGroqKey,
+  clearGroqKey,
+  findStoredGroqKey,
+} from './lib/credentials';
 
 export function activate(context: vscode.ExtensionContext): void {
   const client = new LocusClient(context.secrets);
@@ -102,6 +109,30 @@ export function activate(context: vscode.ExtensionContext): void {
       const key = await promptForAiKey(context.secrets);
       if (key) {
         vscode.window.showInformationMessage('Gemini API key saved.');
+      }
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('shipshape.configureGroqApiKey', async () => {
+      const existing = await findStoredGroqKey(context.secrets);
+      if (existing) {
+        const action = await vscode.window.showInformationMessage(
+          'A Groq API key is already saved. Replace it?',
+          'Replace',
+          'Clear',
+          'Cancel'
+        );
+        if (action === 'Clear') {
+          await clearGroqKey(context.secrets);
+          vscode.window.showInformationMessage('Groq API key cleared.');
+          return;
+        }
+        if (action !== 'Replace') { return; }
+      }
+      const key = await promptForGroqKey(context.secrets);
+      if (key) {
+        vscode.window.showInformationMessage('Groq API key saved.');
       }
     })
   );

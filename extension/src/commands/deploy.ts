@@ -6,7 +6,7 @@ import {
 } from '../lib/locus';
 import { showError } from '../lib/errorFormat';
 import { detectProjectType, PROJECT_TYPE_LABELS, ProjectType } from '../lib/detector';
-import { findStoredApiKey, findStoredAiKey } from '../lib/credentials';
+import { findStoredApiKey, findStoredAiKey, findStoredGroqKey } from '../lib/credentials';
 import { diagnoseFailure, AiDiagnosis, ProposedFix, AiError } from '../lib/aiDiagnosis';
 import * as path from 'path';
 import { detectGitHubRemote, isGitRepo } from '../lib/gitRemote';
@@ -671,22 +671,36 @@ async function handleFailure(args: HandleFailureArgs): Promise<void> {
   const { phase, renderedLines } = await fetchFullLogs(client, state.deploymentId, channel);
   statusBar.setState('failed');
 
-  const aiKey = await findStoredAiKey(context.secrets);
-  if (aiKey) {
+  const geminiKey = await findStoredAiKey(context.secrets);
+  const groqKey = await findStoredGroqKey(context.secrets);
+  if (geminiKey || groqKey) {
     try {
       channel.appendLine('');
-      channel.appendLine('🤖 Running AI diagnosis (Gemini 2.5 Flash)...');
-      const diagnosis = await vscode.window.withProgress(
+      const initialLabel = geminiKey ? 'Gemini 2.5 Flash' : 'Groq Llama 3.3 70B';
+      channel.appendLine(`🤖 Running AI diagnosis (${initialLabel})...`);
+      const result = await vscode.window.withProgress(
         { location: vscode.ProgressLocation.Notification, title: 'ShipShape: AI diagnosing failure...' },
-        () => diagnoseFailure(aiKey, {
-          phase,
-          logs: renderedLines,
-          projectType,
-          workspaceRoot,
-          repoSlug: state.repoSlug,
-        })
+        () => diagnoseFailure(
+          { gemini: geminiKey, groq: groqKey },
+          {
+            phase,
+            logs: renderedLines,
+            projectType,
+            workspaceRoot,
+            repoSlug: state.repoSlug,
+          },
+          (event) => {
+            if (event.type === 'fallback') {
+              channel.appendLine(`⚠ ${event.reason}`);
+              channel.appendLine('   Falling back to Groq (Llama 3.3 70B)...');
+            }
+          }
+        )
       );
-      await presentAiDiagnosis(diagnosis, args);
+      if (result.provider === 'groq') {
+        channel.appendLine('✓ Diagnosis produced by Groq (fallback).');
+      }
+      await presentAiDiagnosis(result.diagnosis, args);
       return;
     } catch (err) {
       const message = err instanceof AiError

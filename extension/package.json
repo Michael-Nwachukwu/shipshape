@@ -49,6 +49,10 @@
         "title": "ShipShape: Configure Gemini API Key (for AI features)"
       },
       {
+        "command": "shipshape.configureGroqApiKey",
+        "title": "ShipShape: Configure Groq API Key (AI fallback)"
+      },
+      {
         "command": "shipshape.viewLogs",
         "title": "ShipShape: View Logs",
         "icon": "$(output)"

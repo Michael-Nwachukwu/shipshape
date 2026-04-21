@@ -90,3 +90,44 @@ export async function promptForAiKey(
 export async function clearAiKey(secrets: vscode.SecretStorage): Promise<void> {
   await secrets.delete(GEMINI_KEY_SECRET);
 }
+
+// ─── Groq API key (fallback provider for AI diagnosis) ───────────────────────
+
+const GROQ_KEY_SECRET = 'shipshape.groqApiKey';
+
+export async function findStoredGroqKey(
+  secrets: vscode.SecretStorage
+): Promise<string | undefined> {
+  return secrets.get(GROQ_KEY_SECRET);
+}
+
+/**
+ * Prompt user for a Groq API key and save it. Used as a fallback when Gemini
+ * is unavailable. Get one free at https://console.groq.com/keys.
+ */
+export async function promptForGroqKey(
+  secrets: vscode.SecretStorage,
+  reason?: string
+): Promise<string | undefined> {
+  const prompt = reason
+    ? `${reason} — paste a Groq API key (free at console.groq.com/keys)`
+    : 'Paste a Groq API key (free at console.groq.com/keys)';
+  const key = await vscode.window.showInputBox({
+    prompt,
+    password: true,
+    placeHolder: 'gsk_...',
+    ignoreFocusOut: true,
+    validateInput: (v) => {
+      if (!v) { return 'Required'; }
+      if (v.length < 20) { return 'Key looks too short'; }
+      return null;
+    },
+  });
+  if (!key) { return undefined; }
+  await secrets.store(GROQ_KEY_SECRET, key);
+  return key;
+}
+
+export async function clearGroqKey(secrets: vscode.SecretStorage): Promise<void> {
+  await secrets.delete(GROQ_KEY_SECRET);
+}

@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 ## [Unreleased]
 
 ### Added
+- **Groq fallback for AI diagnosis** — when Gemini fails after its built-in retries (e.g. sustained 503), ShipShape automatically retries the diagnosis against Groq's Llama 3.3 70B via JSON mode. Falls through to the pattern-based classifier only if both providers fail. Configure via **ShipShape: Configure Groq API Key (AI fallback)** — free keys at `console.groq.com/keys`.
 - **Custom domains (BYOD)** — right-click a service → **ShipShape: Add Custom Domain**. Webview walks through registering the domain, copying DNS records (routing + SSL validation CNAMEs), manually triggering verification, and attaching to the service. Remove flow (detach + delete) is built into the same panel.
 - **Domain tooltip in service tree** — services with attached custom domains show `🌐 https://…` in the tooltip and a globe glyph in the description.
 - **Purchase link-out** — "Purchase a new domain" button opens `beta.buildwithlocus.com/domains` in the browser (in-editor purchase flow is not supported to keep the extension focused).
