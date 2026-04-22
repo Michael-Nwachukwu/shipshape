@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ShipShape | Deploy to Locus from VS Code</title>
+  <meta
+    name="description"
+    content="ShipShape is a VS Code extension for deploying, managing, and monitoring full-stack apps on Locus without leaving your editor."
+  >
+  <style>
+    :root {
+      --bg: #f4ecdd;
+      --bg-strong: #e8dcc6;
+      --surface: rgba(255, 251, 245, 0.82);
+      --surface-strong: #fffaf2;
+      --ink: #14283a;
+      --muted: #566778;
+      --line: rgba(20, 40, 58, 0.12);
+      --brand: #0d5c63;
+      --brand-deep: #083d47;
+      --accent: #ef6c45;
+      --accent-soft: #ffd3b2;
+      --sun: #f2b954;
+      --success: #2a8a63;
+      --shadow: 0 24px 60px rgba(18, 40, 58, 0.14);
+      --radius-xl: 32px;
+      --radius-lg: 24px;
+      --radius-md: 18px;
+      --max-width: 1180px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(255, 211, 178, 0.8), transparent 30%),
+        radial-gradient(circle at top right, rgba(13, 92, 99, 0.18), transparent 26%),
+        linear-gradient(180deg, #f8f1e5 0%, #f3ebdd 44%, #fbf8f2 100%);
+      min-height: 100vh;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(20, 40, 58, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(20, 40, 58, 0.03) 1px, transparent 1px);
+      background-size: 30px 30px;
+      mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.45), transparent 78%);
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    img {
+      max-width: 100%;
+      display: block;
+    }
+
+    .shell {
+      width: min(var(--max-width), calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      padding: 18px 0;
+      backdrop-filter: blur(18px);
+      background: linear-gradient(180deg, rgba(248, 241, 229, 0.88), rgba(248, 241, 229, 0.62));
+      border-bottom: 1px solid rgba(20, 40, 58, 0.06);
+    }
+
+    .topbar__row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+
+    .brand__mark {
+      width: 48px;
+      height: 48px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #0d5c63, #1e7a83);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 12px 22px rgba(13, 92, 99, 0.22);
+      padding: 8px;
+    }
+
+    .brand__text {
+      display: grid;
+      gap: 2px;
+    }
+
+    .brand__title {
+      font-size: 1.1rem;
+    }
+
+    .brand__meta {
+      font-size: 0.84rem;
+      color: var(--muted);
+      font-weight: 600;
+      letter-spacing: 0;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .nav a {
+      font-size: 0.95rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .nav .cta {
+      padding: 12px 18px;
+      border-radius: 999px;
+      background: var(--brand-deep);
+      color: white;
+      box-shadow: 0 16px 28px rgba(8, 61, 71, 0.22);
+    }
+
+    .hero {
+      padding: 56px 0 34px;
+    }
+
+    .hero__grid {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 34px;
+      align-items: center;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(20, 40, 58, 0.08);
+      font-size: 0.86rem;
+      font-weight: 700;
+      color: var(--brand-deep);
+      box-shadow: 0 12px 30px rgba(20, 40, 58, 0.05);
+    }
+
+    .hero h1 {
+      margin: 18px 0 16px;
+      font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+      font-size: clamp(3rem, 6vw, 5.6rem);
+      line-height: 0.94;
+      letter-spacing: -0.05em;
+      max-width: 12ch;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 60ch;
+      font-size: 1.1rem;
+      line-height: 1.75;
+      color: var(--muted);
+    }
+
+    .hero__actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 28px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      min-height: 52px;
+      padding: 0 22px;
+      border-radius: 999px;
+      font-weight: 700;
+      border: 1px solid transparent;
+      transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+    }
+
+    .button--primary {
+      background: linear-gradient(135deg, var(--accent), #ff875e);
+      color: white;
+      box-shadow: 0 18px 34px rgba(239, 108, 69, 0.28);
+    }
+
+    .button--secondary {
+      background: rgba(255, 255, 255, 0.76);
+      border-color: rgba(20, 40, 58, 0.1);
+      color: var(--ink);
+    }
+
+    .frameworks {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 26px;
+    }
+
+    .frameworks span {
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.68);
+      border: 1px solid rgba(20, 40, 58, 0.08);
+      color: var(--brand-deep);
+      font-size: 0.88rem;
+      font-weight: 700;
+    }
+
+    .visual {
+      position: relative;
+    }
+
+    .orb {
+      position: absolute;
+      border-radius: 999px;
+      filter: blur(8px);
+      opacity: 0.8;
+    }
+
+    .orb--a {
+      width: 150px;
+      height: 150px;
+      top: -28px;
+      right: 28px;
+      background: rgba(242, 185, 84, 0.38);
+    }
+
+    .orb--b {
+      width: 100px;
+      height: 100px;
+      bottom: 52px;
+      left: -18px;
+      background: rgba(13, 92, 99, 0.22);
+    }
+
+    .window {
+      position: relative;
+      z-index: 1;
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 243, 235, 0.94));
+      border: 1px solid rgba(20, 40, 58, 0.08);
+      box-shadow: var(--shadow);
+    }
+
+    .window__top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      background: rgba(9, 41, 47, 0.94);
+      color: rgba(255, 255, 255, 0.88);
+      font-size: 0.92rem;
+    }
+
+    .window__dots {
+      display: inline-flex;
+      gap: 8px;
+    }
+
+    .window__dots span {
+      width: 11px;
+      height: 11px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.34);
+    }
+
+    .window__body {
+      display: grid;
+      grid-template-columns: 74px 1fr;
+      min-height: 520px;
+    }
+
+    .activitybar {
+      padding: 18px 10px;
+      background: rgba(8, 39, 45, 0.98);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .activitybar__icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 16px;
+      padding: 9px;
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .activitybar__pill {
+      width: 32px;
+      height: 32px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(180px, 220px) 1fr;
+      background: linear-gradient(180deg, rgba(255, 251, 245, 0.9), rgba(244, 236, 221, 0.78));
+    }
+
+    .sidebar {
+      padding: 22px 18px;
+      border-right: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.42);
+    }
+
+    .sidebar__label {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--muted);
+      margin-bottom: 16px;
+      font-weight: 700;
+    }
+
+    .tree {
+      display: grid;
+      gap: 10px;
+    }
+
+    .tree__item {
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.68);
+      border: 1px solid rgba(20, 40, 58, 0.07);
+      font-size: 0.92rem;
+      line-height: 1.4;
+    }
+
+    .tree__item strong {
+      display: block;
+      margin-bottom: 3px;
+    }
+
+    .tree__item small {
+      color: var(--muted);
+    }
+
+    .panel {
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      padding: 22px;
+      gap: 18px;
+    }
+
+    .panel__row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .panel__tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(13, 92, 99, 0.1);
+      color: var(--brand-deep);
+      font-size: 0.86rem;
+      font-weight: 700;
+    }
+
+    .panel__command {
+      padding: 14px 18px;
+      border-radius: 18px;
+      background: rgba(8, 61, 71, 0.96);
+      color: #d7f6ef;
+      font-family: "SFMono-Regular", "Menlo", "Monaco", monospace;
+      font-size: 0.92rem;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    .logs {
+      display: grid;
+      gap: 10px;
+      padding: 16px;
+      border-radius: 20px;
+      background: #0a2027;
+      color: #dff9f2;
+      font-family: "SFMono-Regular", "Menlo", "Monaco", monospace;
+      font-size: 0.88rem;
+      line-height: 1.55;
+      min-height: 220px;
+    }
+
+    .logs span {
+      opacity: 0.88;
+    }
+
+    .logs .ok {
+      color: #7eebb5;
+    }
+
+    .logs .accent {
+      color: #ffd382;
+    }
+
+    .footer-strip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      padding: 16px 18px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(20, 40, 58, 0.08);
+      font-size: 0.92rem;
+      color: var(--muted);
+    }
+
+    .metrics {
+      padding: 26px 0 22px;
+    }
+
+    .metrics__grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+    }
+
+    .metric {
+      padding: 24px;
+      background: var(--surface);
+      border: 1px solid rgba(20, 40, 58, 0.08);
+      border-radius: 24px;
+      box-shadow: 0 18px 32px rgba(20, 40, 58, 0.06);
+      backdrop-filter: blur(16px);
+    }
+
+    .metric__value {
+      font-family: "Iowan Old Style", "Palatino Linotype", serif;
+      font-size: clamp(2rem, 3vw, 2.8rem);
+      letter-spacing: -0.05em;
+      margin-bottom: 8px;
+    }
+
+    .metric__label {
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .metric p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .section {
+      padding: 64px 0;
+    }
+
+    .section__header {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 26px;
+      flex-wrap: wrap;
+    }
+
+    .section__header h2 {
+      margin: 0;
+      font-family: "Iowan Old Style", "Palatino Linotype", serif;
+      font-size: clamp(2.1rem, 4vw, 3.6rem);
+      line-height: 1;
+      letter-spacing: -0.04em;
+    }
+
+    .section__header p {
+      max-width: 56ch;
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.75;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+    }
+
+    .card {
+      padding: 24px;
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      border: 1px solid rgba(20, 40, 58, 0.08);
+      box-shadow: 0 18px 36px rgba(20, 40, 58, 0.06);
+      backdrop-filter: blur(14px);
+    }
+
+    .card__icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      margin-bottom: 18px;
+      background: linear-gradient(135deg, rgba(13, 92, 99, 0.16), rgba(239, 108, 69, 0.16));
+      color: var(--brand-deep);
+      font-weight: 800;
+    }
+
+    .card h3 {
+      margin: 0 0 10px;
+      font-size: 1.15rem;
+      letter-spacing: -0.02em;
+    }
+
+    .card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.72;
+    }
+
+    .workflow {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+    }
+
+    .step {
+      position: relative;
+      padding: 28px 22px 24px;
+      border-radius: 26px;
+      background: linear-gradient(180deg, rgba(255, 250, 242, 0.88), rgba(247, 239, 227, 0.82));
+      border: 1px solid rgba(20, 40, 58, 0.08);
+      box-shadow: 0 18px 34px rgba(20, 40, 58, 0.06);
+    }
+
+    .step__num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      background: var(--brand-deep);
+      color: white;
+      font-weight: 800;
+      margin-bottom: 18px;
+    }
+
+    .step h3 {
+      margin: 0 0 10px;
+      font-size: 1.08rem;
+    }
+
+    .step p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.68;
+    }
+
+    .showcase {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .snippet {
+      padding: 28px;
+      border-radius: 28px;
+      background: linear-gradient(180deg, #0d2530, #0b1d28);
+      color: #f4fff8;
+      box-shadow: 0 24px 48px rgba(8, 29, 40, 0.24);
+    }
+
+    .snippet__meta {
+      color: rgba(244, 255, 248, 0.68);
+      font-size: 0.88rem;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      margin-bottom: 18px;
+      font-weight: 700;
+    }
+
+    .snippet pre {
+      margin: 0;
+      white-space: pre-wrap;
+      font-family: "SFMono-Regular", "Menlo", "Monaco", monospace;
+      font-size: 0.95rem;
+      line-height: 1.7;
+      color: #ccefe5;
+    }
+
+    .checklist {
+      display: grid;
+      gap: 14px;
+    }
+
+    .checklist__item {
+      padding: 18px 18px 18px 20px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.76);
+      border: 1px solid rgba(20, 40, 58, 0.08);
+    }
+
+    .checklist__item strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .checklist__item p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .double {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 18px;
+    }
+
+    .list {
+      display: grid;
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .list div {
+      padding: 16px 18px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(20, 40, 58, 0.08);
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .list strong {
+      color: var(--ink);
+    }
+
+    .cta-panel {
+      position: relative;
+      overflow: hidden;
+      padding: 36px;
+      border-radius: 34px;
+      background:
+        radial-gradient(circle at top right, rgba(242, 185, 84, 0.32), transparent 28%),
+        linear-gradient(135deg, #0b4050, #0a2d38 62%);
+      color: white;
+      box-shadow: 0 28px 56px rgba(8, 40, 50, 0.26);
+    }
+
+    .cta-panel h2 {
+      margin: 0 0 14px;
+      font-family: "Iowan Old Style", "Palatino Linotype", serif;
+      font-size: clamp(2rem, 4vw, 3.4rem);
+      line-height: 1;
+      letter-spacing: -0.04em;
+      max-width: 12ch;
+    }
+
+    .cta-panel p {
+      margin: 0;
+      max-width: 54ch;
+      color: rgba(255, 255, 255, 0.82);
+      line-height: 1.75;
+    }
+
+    .cta-panel .hero__actions {
+      margin-top: 24px;
+    }
+
+    .footer {
+      padding: 34px 0 54px;
+      color: var(--muted);
+    }
+
+    .footer__row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      border-top: 1px solid rgba(20, 40, 58, 0.08);
+      padding-top: 24px;
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity 600ms ease, transform 600ms ease;
+    }
+
+    .reveal.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 1080px) {
+      .hero__grid,
+      .showcase,
+      .double {
+        grid-template-columns: 1fr;
+      }
+
+      .feature-grid,
+      .workflow,
+      .metrics__grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 760px) {
+      .topbar {
+        position: static;
+      }
+
+      .nav {
+        justify-content: flex-start;
+      }
+
+      .window__body,
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+
+      .activitybar {
+        flex-direction: row;
+        justify-content: flex-start;
+        padding: 14px;
+      }
+
+      .feature-grid,
+      .workflow,
+      .metrics__grid {
+        grid-template-columns: 1fr;
+      }
+
+      .shell {
+        width: min(var(--max-width), calc(100% - 20px));
+      }
+
+      .hero {
+        padding-top: 32px;
+      }
+
+      .card,
+      .step,
+      .metric,
+      .snippet,
+      .cta-panel {
+        padding: 22px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+
+      .button,
+      .reveal {
+        transition: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar__row">
+      <a class="brand" href="#top" aria-label="ShipShape home">
+        <span class="brand__mark">
+          <img src="logo.png" alt="ShipShape logo">
+        </span>
+        <span class="brand__text">
+          <span class="brand__title">ShipShape</span>
+          <span class="brand__meta">Deploy to Locus from VS Code</span>
+        </span>
+      </a>
+      <nav class="nav" aria-label="Primary">
+        <a href="#features">Features</a>
+        <a href="#workflow">How it works</a>
+        <a href="#commands">Commands</a>
+        <a href="#install" class="cta">Install the VSIX</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="shell hero__grid">
+        <div class="reveal is-visible">
+          <div class="eyebrow">Built for the Paygentic Hackathon #2 · Build with Locus</div>
+          <h1>Deploy from VS Code. Stay in flow.</h1>
+          <p>
+            ShipShape turns your editor into a full Locus deployment cockpit. Detect the app,
+            generate the config, stream the logs, surface the live URL, and recover from failures
+            with AI guidance, all without bouncing into a terminal or browser tab.
+          </p>
+          <div class="hero__actions">
+            <a class="button button--primary" href="#install">Install ShipShape</a>
+            <a class="button button--secondary" href="#workflow">See the deploy flow</a>
+          </div>
+          <div class="frameworks" aria-label="Supported frameworks">
+            <span>Next.js</span>
+            <span>Express</span>
+            <span>FastAPI</span>
+            <span>Django</span>
+            <span>Rails</span>
+            <span>Dockerfile</span>
+            <span>Vite</span>
+          </div>
+        </div>
+
+        <div class="visual reveal">
+          <div class="orb orb--a"></div>
+          <div class="orb orb--b"></div>
+          <div class="window" aria-label="ShipShape deploy preview">
+            <div class="window__top">
+              <div class="window__dots" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <div>ShipShape: demo-app</div>
+              <div>Live on Locus</div>
+            </div>
+            <div class="window__body">
+              <div class="activitybar" aria-hidden="true">
+                <img class="activitybar__icon" src="logo.png" alt="">
+                <div class="activitybar__pill"></div>
+                <div class="activitybar__pill"></div>
+                <div class="activitybar__pill"></div>
+              </div>
+              <div class="workspace">
+                <aside class="sidebar">
+                  <div class="sidebar__label">Services</div>
+                  <div class="tree">
+                    <div class="tree__item">
+                      <strong>my-app</strong>
+                      <small>production environment</small>
+                    </div>
+                    <div class="tree__item">
+                      <strong>web · healthy</strong>
+                      <small>Deploy #3 · 4m ago</small>
+                    </div>
+                    <div class="tree__item">
+                      <strong>api · deploying</strong>
+                      <small>Live logs attached</small>
+                    </div>
+                  </div>
+                </aside>
+                <div class="panel">
+                  <div class="panel__row">
+                    <div class="panel__tag">One-click deploy from the editor</div>
+                    <div class="panel__tag">HTTPS URL ready</div>
+                  </div>
+                  <div class="panel__command">Cmd+Shift+P → ShipShape: Deploy Workspace</div>
+                  <div class="logs">
+                    <span>$ verifying Locus credentials...</span>
+                    <span>$ detected project type: nextjs</span>
+                    <span>$ generated .locusbuild</span>
+                    <span class="accent">$ streaming deployment logs...</span>
+                    <span>build: cloning repo owner/demo-app</span>
+                    <span>build: installing dependencies</span>
+                    <span>deploy: service web entering health checks</span>
+                    <span class="ok">healthy: https://svc-abcd.buildwithlocus.com</span>
+                  </div>
+                  <div class="footer-strip">
+                    <span>Status bar: ShipShape: Live</span>
+                    <span>AI diagnosis ready if anything fails</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="metrics">
+      <div class="shell metrics__grid">
+        <article class="metric reveal">
+          <div class="metric__value">1 click</div>
+          <div class="metric__label">From workspace to deployment</div>
+          <p>Open a repo, confirm detection, review the generated config, and ShipShape carries the Locus deploy flow through to a live URL.</p>
+        </article>
+        <article class="metric reveal">
+          <div class="metric__value">Live SSE</div>
+          <div class="metric__label">Logs where you already work</div>
+          <p>Build and runtime logs stream straight into the VS Code output channel while status updates stay visible.</p>
+        </article>
+        <article class="metric reveal">
+          <div class="metric__value">AI deploy</div>
+          <div class="metric__label">Describe it, then ship it</div>
+          <p>Describe what you want, Gemini 2.5 Flash generates a <code>.locusbuild</code> via structured output, ShipShape preflights it with <code>verify-locusbuild</code>, then deploys.</p>
+        </article>
+        <article class="metric reveal">
+          <div class="metric__value">AI assist</div>
+          <div class="metric__label">Failure diagnosis with a fix loop</div>
+          <p>When a deployment breaks, ShipShape explains the root cause and can propose a safe single-file repair.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="features">
+      <div class="shell">
+        <div class="section__header reveal">
+          <h2>The entire deploy surface, folded into your editor</h2>
+          <p>
+            The README is full of practical product detail, so this page keeps that fidelity:
+            ShipShape is not just a shiny launch button. It is detection, config generation, logs,
+            service management, and recovery, all designed around the VS Code workflow.
+          </p>
+        </div>
+        <div class="feature-grid">
+          <article class="card reveal">
+            <div class="card__icon">01</div>
+            <h3>Smart project detection</h3>
+            <p>Recognizes Next.js, Vite, Express, FastAPI, Django, Rails, Dockerfile setups, and generic Node or Python projects.</p>
+          </article>
+          <article class="card reveal">
+            <div class="card__icon">02</div>
+            <h3>Auto `.locusbuild` generation</h3>
+            <p>Writes a framework-appropriate config for you and shows a diff preview before you commit to the deploy.</p>
+          </article>
+          <article class="card reveal">
+            <div class="card__icon">03</div>
+            <h3>Dockerfile rescue when needed</h3>
+            <p>Corrects cases where default build behavior would bind to the wrong port, then commits and pushes the fix before deploy.</p>
+          </article>
+          <article class="card reveal">
+            <div class="card__icon">04</div>
+            <h3>Service explorer sidebar</h3>
+            <p>Browse Projects, Environments, Services, and Deployments with live status indicators and right-click actions.</p>
+          </article>
+          <article class="card reveal">
+            <div class="card__icon">05</div>
+            <h3>Environment variable manager</h3>
+            <p>Edit variables in a webview panel, save, and automatically trigger the redeploy required for them to take effect.</p>
+          </article>
+          <article class="card reveal">
+            <div class="card__icon">06</div>
+            <h3>AI diagnosis and auto-fix loop</h3>
+            <p>Gemini reads the failure logs and relevant files, explains what broke, and offers an apply-and-redeploy path when it is safe.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="workflow">
+      <div class="shell">
+        <div class="section__header reveal">
+          <h2>A deploy flow that feels like a feature, not a detour</h2>
+          <p>
+            ShipShape compresses the first-deploy ritual into a short guided loop. The goal is simple:
+            keep developers in the editor and keep the cognitive load low.
+          </p>
+        </div>
+        <div class="workflow">
+          <article class="step reveal">
+            <div class="step__num">1</div>
+            <h3>Open the project</h3>
+            <p>ShipShape checks for your Locus credentials, confirms billing readiness, and detects the framework automatically.</p>
+          </article>
+          <article class="step reveal">
+            <div class="step__num">2</div>
+            <h3>Review the config</h3>
+            <p>If a `.locusbuild` file is missing, the extension generates one and shows it back to you before deployment starts.</p>
+          </article>
+          <article class="step reveal">
+            <div class="step__num">3</div>
+            <h3>Deploy from GitHub</h3>
+            <p>Once the repo is confirmed, ShipShape triggers the Locus project-from-repo flow and opens a dedicated log channel.</p>
+          </article>
+          <article class="step reveal">
+            <div class="step__num">4</div>
+            <h3>Watch it go live</h3>
+            <p>The status bar tracks progress from building to healthy, then surfaces the final HTTPS URL when the service is ready.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="commands">
+      <div class="shell showcase">
+        <article class="snippet reveal">
+          <div class="snippet__meta">Command palette friendly</div>
+          <pre>ShipShape: Deploy Workspace
+ShipShape: Configure Locus API Key
+ShipShape: Configure Gemini API Key
+ShipShape: View Logs
+ShipShape: Open Live URL
+ShipShape: Restart Service
+ShipShape: Rollback Deployment
+ShipShape: Manage Environment Variables
+ShipShape: Refresh Services</pre>
+        </article>
+        <div class="checklist">
+          <article class="checklist__item reveal">
+            <strong>Made for real deploy friction</strong>
+            <p>No browser hopping. No terminal babysitting. No hand-writing config files just to get a preview link.</p>
+          </article>
+          <article class="checklist__item reveal">
+            <strong>Built around Locus</strong>
+            <p>Uses the Locus Build API with JWT exchange, billing checks, service actions, log streaming, and deployment polling.</p>
+          </article>
+          <article class="checklist__item reveal">
+            <strong>Shaped for demo and beyond</strong>
+            <p>The experience is polished enough for a hackathon demo, but the feature set already reaches into day-to-day deployment workflows.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="install">
+      <div class="shell double">
+        <article class="card reveal">
+          <div class="section__header">
+            <h2>Install and ship</h2>
+          </div>
+          <div class="list">
+            <div><strong>1.</strong> Install the packaged extension with <code>code --install-extension shipshape-0.1.0.vsix</code>.</div>
+            <div><strong>2.</strong> Run <code>ShipShape: Configure Locus API Key</code> and paste your <code>claw_...</code> key.</div>
+            <div><strong>3.</strong> Optionally add a Gemini key to unlock AI failure diagnosis and the auto-fix loop.</div>
+            <div><strong>4.</strong> Open a GitHub-backed app in VS Code and trigger <code>ShipShape: Deploy Workspace</code>.</div>
+          </div>
+        </article>
+        <article class="card reveal">
+          <div class="section__header">
+            <h2>Security and trust</h2>
+          </div>
+          <div class="list">
+            <div><strong>Encrypted storage.</strong> API keys live in VS Code SecretStorage, not in plain settings.</div>
+            <div><strong>Short-lived auth.</strong> JWT tokens are cached in memory only and refreshed when needed.</div>
+            <div><strong>Focused integrations.</strong> Secrets are sent only to Locus and Google for the AI diagnosis path.</div>
+            <div><strong>Clear recovery path.</strong> When deploys fail, the extension surfaces logs, rollback options, and guided fixes instead of dead ends.</div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="shell">
+        <div class="cta-panel reveal">
+          <h2>Turn VS Code into your Locus launch deck</h2>
+          <p>
+            ShipShape is built for developers who want deployment to feel native to the editor:
+            visible, fast, recoverable, and beautifully boring when it works. Open the workspace,
+            press deploy, and let the extension handle the rest.
+          </p>
+          <div class="hero__actions">
+            <a class="button button--primary" href="#top">Back to top</a>
+            <a class="button button--secondary" href="README.md">Read the project README</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="shell footer__row">
+      <div>ShipShape · VS Code extension for deploying to Locus</div>
+      <div>Crafted from the product story in the repository README</div>
+    </div>
+  </footer>
+
+  <script>
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+        }
+      });
+    }, { threshold: 0.18 });
+
+    document.querySelectorAll('.reveal:not(.is-visible)').forEach((node) => observer.observe(node));
+  </script>
+</body>
+</html>
